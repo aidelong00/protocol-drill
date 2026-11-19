@@ -711,9 +711,25 @@ function nearLast(R,U,info){
 // A doubled number, "not", "no" or comparison sign still counts.
 function dedupe(u,twice){ return u.filter((t,j)=>!(j>0&&u[j-1]===t&&!twice.has(t)&&!(CRIT(t)&&t!=='and'&&t!=='or'))); }
 function twiceIn(toks,lee){ const s=new Set(); [toks,toks.filter(t=>!lee.has(t))].forEach(a=>a.forEach((t,i)=>{ if(i&&a[i-1]===t) s.add(t); })); return s; }
+// A typo of a small word you may skip ("te" or "teh" for "the", "fo" for "of") counts as that small word,
+// as long as what you typed isn't a word in its own right anywhere in the cards ("iv" is a route, not "is").
+let VOCAB=null;
+function vocab(){
+  if(!VOCAB){ VOCAB=new Set(); try{ BUILTIN.forEach(d=>d.items.forEach(it=>{ if(typeof it.a==='string') norm(displayText(it.a)).forEach(t=>VOCAB.add(t)); })); }catch(e){}
+    CANON.forEach(t=>VOCAB.add(t)); Object.values(SYN).forEach(t=>VOCAB.add(t)); }
+  return VOCAB;
+}
+// Word beginnings typed as words of their own ("non steroidal", "anti inflammatory") are never small-word typos.
+const WORD_STARTS=new Set('non un re de co ex pre pro post sub anti semi hyper hypo intra inter para peri mid mis bi tri'.split(' '));
+function smallTypo(t,lee,ref){
+  if(t.length<2||CRIT(t)||lee.has(t)||ref.set.has(t)||vocab().has(t)||WORD_STARTS.has(t)) return null;
+  for(const r of ref.set) if(!lee.has(r)&&tokEq(r,t)) return null;   // a typo of one of the card's own words
+  for(const w of lee) if(w.length>=2&&w!=='~'&&osa(t,w)===1) return w;
+  return null;
+}
 function userToks(text,ref,lee,o){
   if(!ref.raw2) ref.raw2=twiceIn(norm(ref.parts.join('')),LEEWAY.keys);
-  let u=adapt(canonUser(dedupe(norm(text),ref.raw2),ref.set),ref);
+  let u=adapt(canonUser(dedupe(norm(text).map(t=>smallTypo(t,lee,ref)||t),ref.raw2),ref.set),ref);
   if(o&&o.alt) u=applyAlt(u,o.alt);
   // only on cards that use one of these words, and never for a different word on the card ("affects", "effector")
   if(o&&o.eff&&EFF.some(e=>ref.set.has(e))){
