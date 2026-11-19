@@ -635,6 +635,41 @@ function lcsLast(R,U){
   while(i<n&&j<m){ if(tokEq(R[i],U[j])&&T[i][j]===T[i+1][j+1]+1){ last=i; i++; j++; } else if(T[i][j+1]===T[i][j]) j++; else i++; }
   return last;
 }
+// Where you are in the answer, for "Show next word". Takes the alignment that matches the most of what you typed
+// while jumping over as little of the answer as possible (each answer word jumped over costs NEAR_GAP of a match),
+// so a word that appears again later in the answer ("acetylcholine") doesn't throw the position forward.
+// Then any of the next answer words you've already typed, a little out of order, count as done, and a wrong
+// word typed after the last right one counts as your try at the word that goes there.
+const NEAR_GAP=0.3;
+function nearLast(R,U,info){
+  const n=R.length, m=U.length; if(!n||!m) return -1;
+  const NEG=-1e9, S=[], P=[], PA=[];
+  for(let i=0;i<n;i++){ S.push(new Float64Array(m).fill(NEG)); P.push(new Float64Array(m).fill(NEG)); PA.push(new Int32Array(m).fill(-1)); }
+  const from=[];   // for each matched cell, the previous matched cell (or -1)
+  for(let i=0;i<n;i++){ from.push(new Int32Array(m).fill(-1));
+    for(let j=0;j<m;j++){
+      if(tokEq(R[i],U[j])){
+        let best=-NEAR_GAP*i, src=-1;   // starting here: the answer words before it count as jumped over
+        if(i>0&&j>0&&P[i-1][j-1]>NEG/2){ const v=P[i-1][j-1]-NEAR_GAP*(i-1); if(v>best){ best=v; src=PA[i-1][j-1]; } }
+        S[i][j]=1+best; from[i][j]=src;
+      }
+      let pv=S[i][j]>NEG/2?S[i][j]+NEAR_GAP*i:NEG, pa=pv>NEG/2?i*m+j:-1;
+      if(i>0&&P[i-1][j]>pv){ pv=P[i-1][j]; pa=PA[i-1][j]; }
+      if(j>0&&P[i][j-1]>pv){ pv=P[i][j-1]; pa=PA[i][j-1]; }
+      P[i][j]=pv; PA[i][j]=pa;
+    }
+  }
+  let bi=-1,bj=-1,bs=NEG;
+  for(let i=0;i<n;i++) for(let j=0;j<m;j++){ const v=S[i][j]; if(v>bs+1e-9||(Math.abs(v-bs)<=1e-9&&(j>bj||(j===bj&&i<bi)))){ bs=v; bi=i; bj=j; } }
+  if(bi<0) return -1;
+  const usedU=new Set(); let c=bi*m+bj; while(c>=0){ const i=Math.floor(c/m), j=c%m; usedU.add(j); c=from[i][j]; }
+  let k=bi+1;
+  while(k<n){ let hit=-1; for(let j=Math.max(0,bj-ORDER_SLACK);j<m;j++) if(!usedU.has(j)&&tokEq(R[k],U[j])){ hit=j; break; } if(hit<0) break; usedU.add(hit); k++; }
+  // Words typed after the last one that fits stand in for the next answer words (a wrong word for the right one).
+  let extra=0; for(let j=bj+1;j<m;j++) if(!usedU.has(j)) extra++;
+  k+=Math.min(extra,3); if(info) info.skipped=Math.min(extra,3);
+  return Math.min(k,n)-1;
+}
 // A word typed twice in a row by mistake ("and and", "heart heart rate") is ignored, unless the card itself
 // repeats it (small words you may skip left out: "calcium than calcium" may be typed "calcium calcium").
 // A doubled number, "not", "no" or comparison sign still counts.
@@ -938,11 +973,15 @@ function nextWord(item,text,mode){
   const R=req.map(i=>effRef(ref.toks[i].t,O));
   if(!R.length) return null;
   // A word that could start a longer term ("myocardial" → MI) only counts as unfinished if it doesn't already fit.
+  // (If the unfinished term's words only moved you on as a stand-in for a wrong word, you're still typing it.)
+  let kSkip=0;
   const kOf=txt=>{ const U0=userToks(txt,ref,lee,O); const pend=pendingTail(U0,ref,lee);
-    const a=kAt(U0); if(!pend) return a; const b=kAt(U0.slice(0,U0.length-pend));
-    const av=a==null?R.length:a, bv=b==null?R.length:b; return av>bv&&av<=bv+pend?a:b; };
+    const a=kAt(U0), aS=lastSkip; if(!pend){ kSkip=aS; return a; }
+    const b=kAt(U0.slice(0,U0.length-pend)), bS=lastSkip; if(aS){ kSkip=bS; return b; }
+    const av=a==null?R.length:a, bv=b==null?R.length:b, useA=av>bv&&av<=bv+pend; kSkip=useA?aS:bS; return useA?a:b; };
   const optT=new Set(ref.toks.filter(x=>x.opt).map(x=>x.t));
-  const kAt=U1=>{ let k=0;
+  let lastSkip=0;
+  const kAt=U1=>{ let k=0; lastSkip=0; const info={};
     // your own "(NS)" right after "normal saline" is the same optional repeat the card has
     const U=U1.filter((t,j)=>!(j>0&&U1[j-1]===t&&optT.has(t)));
     if(!U.length) return 0;
@@ -958,7 +997,7 @@ function nextWord(item,text,mode){
         if(trail.length<idx.length&&trail.every((t,j)=>tokEq(R[idx[j]],t))) return idx[trail.length]; }
       if(curL!==null){
         const idx=R.map((_,i)=>i).filter(i=>lineOf(i)===curL);
-        const last=lcsLast(idx.map(i=>R[i]),U.slice(start));
+        const last=nearLast(idx.map(i=>R[i]),U.slice(start),info); lastSkip=info.skipped||0;
         if(last+1<idx.length) k=idx[last+1]; else curL=null;
       }
       if(curL===null){
@@ -966,7 +1005,7 @@ function nextWord(item,text,mode){
         k=R.map((_,i)=>i).find(i=>lineOf(i)===L);
       }
     } else {
-      const last=lcsLast(R,U); if(last>=0) k=last+1;
+      const last=nearLast(R,U,info); lastSkip=info.skipped||0; if(last>=0) k=last+1;
     }
     return k;
   };
@@ -975,8 +1014,9 @@ function nextWord(item,text,mode){
   let k=kOf(strip);
   if(tail&&k!=null&&k<R.length){
     // count it if adding it moves you forward by no more than its own words (so a skipped word isn't jumped over)
+    // (a half-typed word that doesn't fit yet is still being typed: it doesn't stand in for the next word)
     const n=Math.max(1,userToks(tail,ref,lee,O).length); const k2=kOf(full); const kv=k2==null?R.length:k2;
-    if(kv>k&&kv<=k+n) k=kv;
+    if(!kSkip&&kv>k&&kv<=k+n) k=kv;
   }
   if(k==null||k>=R.length) return null;
   return refWord(ref,req[k]);
