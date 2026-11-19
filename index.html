@@ -112,7 +112,7 @@ button{font-family:inherit}
 
 /* Drill */
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px}
-.back{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--ink);color:var(--ink);font:700 15px/1 var(--font-body);padding:9px 14px 9px 10px;border-radius:999px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.back{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:none;background:var(--card);border:1.5px solid var(--ink);color:var(--ink);font:700 15px/1 var(--font-body);padding:9px 14px 9px 10px;border-radius:999px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .back .chev{font-size:22px;line-height:0;margin-top:-2px}
 .dayrow{display:flex;justify-content:center;align-items:center;gap:22px;flex-wrap:wrap;text-align:center;font-size:16px;font-weight:700;color:var(--ink);padding:2px 0}
 .day-date{color:var(--muted);font-weight:600}
@@ -142,6 +142,11 @@ textarea{min-height:130px;resize:vertical}
 textarea:focus,input[type="text"]:focus{outline:none;border-color:var(--ink)}
 textarea.good{border-color:var(--ok)}
 textarea.shake{animation:shake .32s}
+.drug-boxes{display:flex;flex-direction:column;gap:12px}
+.drug-boxes.shake{animation:shake .32s}
+.db-row{display:block}
+.db-name,.drug-lbl{display:block;font-weight:700;font-size:16px;color:var(--ink);margin:0 0 6px 2px}
+textarea.db-box{min-height:84px}
 @keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
 .actions{display:flex;gap:10px;flex-wrap:wrap}
 .btn{font:700 16px/1 var(--font-body);border-radius:10px;padding:14px 18px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
@@ -284,7 +289,8 @@ const ABBR=[
   [['not','be','given'],'withheld'],[['not','given'],'withheld'],[['be','withheld'],'withheld']
 ];
 // "HR" can mean heart rate or hours; it counts for either, but those two never count for each other.
-const EQUIV=new Set(['hr|hrate','hrate|hr','hr|hour','hour|hr','within|in','in|within']);
+const EQUIV=new Set(['hr|hrate','hrate|hr','hr|hour','hour|hr','within|in','in|within','onto|to','to|onto']);
+const SAME_WORDS=[['within','in'],['onto','to']];
 // Short forms are matched exactly, never as typos of other words ("rate" is not "heart rate").
 const CANON=new Set(ABBR.map(a=>a[1]).filter(x=>!['first','second','third','withheld'].includes(x)).concat(['hour','yr','wo']));
 // A term spelled out right before its abbreviation has to be spelled out right too:
@@ -501,6 +507,8 @@ function gradeKeys(segs,text){
 /* ---- Full-text grading ---- */
 const RCACHE = new Map();
 // phr: each comma/semicolon phrase is its own unit (classifications); a "Drug:" label starts a group its phrases stay in.
+// Mechanisms: an "and" that only joins things (where a comma would do) may be left out; "and/or" stays word for word.
+const andSkips=(ref,O,i)=>!!(O&&O.andok)&&ref.toks[i].t==='and'&&!ref.slash.has(i)&&!ref.slash.has(i-1);
 function refOf(answer,phr){
   const key=phr?'\u0001'+answer:answer;
   if(RCACHE.has(key)) return RCACHE.get(key);
@@ -694,7 +702,7 @@ function nearLast(R,U,info){
   let k=bi+1;
   while(k<n){ let hit=-1; for(let j=Math.max(0,bj-ORDER_SLACK);j<m;j++) if(!usedU.has(j)&&tokEq(R[k],U[j])){ hit=j; break; } if(hit<0) break; usedU.add(hit); k++; }
   // Words typed after the last one that fits stand in for the next answer words (a wrong word for the right one).
-  let extra=0; for(let j=bj+1;j<m;j++) if(!usedU.has(j)) extra++;
+  let extra=0; for(let j=bj+1;j<m;j++) if(!usedU.has(j)&&U[j]!=='and'&&U[j]!=='or') extra++;   // a joining "and" isn't a word of its own
   k+=Math.min(extra,3); if(info) info.skipped=Math.min(extra,3);
   return Math.min(k,n)-1;
 }
@@ -712,8 +720,12 @@ function userToks(text,ref,lee,o){
     const other=[...ref.set].filter(r=>!EFF.includes(r));
     u=u.map(t=>EFF.includes(t)||(!other.some(r=>tokEq(r,t))&&EFF.some(e=>tokEq(e,t)))?'activity':t);
   }
-  // "in" counts for "within": where "in" is a word you may leave out, keep it when the card says "within".
-  if(lee.has('in')&&ref.set.has('within')) u=u.map(t=>t==='in'?'within':t);
+  // Words that mean the same here count for each other: "within"/"in", "onto"/"to". Your word becomes the card's
+  // (so "in" isn't dropped as a small word where the card says "within", and "onto" isn't a stray word where it says "to").
+  for(const [L,S] of SAME_WORDS){
+    const hl=ref.set.has(L), hs=ref.set.has(S);
+    if(hl&&!hs) u=u.map(t=>t===S?L:t); else if(hs&&!hl) u=u.map(t=>t===L?S:t);
+  }
   if(!ref.tw2) ref.tw2={};
   const tk=lee===LEEWAY.exact?'e':'k'; if(!ref.tw2[tk]) ref.tw2[tk]=twiceIn(ref.toks.map(x=>x.t),lee);
   return dedupe(u.filter(t=>!lee.has(t)),ref.tw2[tk]);
@@ -724,7 +736,7 @@ function gradePlain(answer,text,mode,opts){
   opts=opts||{};
   const ref=refOf(answer,opts.phr); const lee=LEEWAY[mode];
   const user=userToks(text,ref,lee,opts);
-  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt&&!andSkips(ref,opts,i)) req.push(i); });
   const reqT=req.map(ri=>effRef(ref.toks[ri].t,opts));
   const n=req.length, m=user.length;
   const lineOf=i=>ref.line[ref.toks[req[i]].wi];
@@ -792,6 +804,19 @@ function gradePlain(answer,text,mode,opts){
       }
     }
   }
+  // Mechanisms: a joining "and" may be left out, but "or" in its place changes the meaning. An "or" the
+  // protocol doesn't have counts as "or" for the nearest such "and".
+  const orAnd=[];
+  if(opts.andok){
+    const skippedAnds=[]; ref.toks.forEach((x,r)=>{ if(andSkips(ref,opts,r)) skippedAnds.push(r); });
+    let spare=user.filter(t=>t==='or').length-ref.toks.filter(x=>x.t==='or').length;
+    for(let j=0;j<m&&spare>0&&skippedAnds.length;j++){
+      if(user[j]!=='or'||usedU.has(j)) continue;
+      spare--; orAnd.push(j); pass=false; missing.push('\u201cor\u201d for \u201cand\u201d');
+      const x=before(j), near=x>=0?req[x]:0; const r=skippedAnds.reduce((b,c)=>Math.abs(c-near)<Math.abs(b-near)?c:b);
+      const t=ref.toks[r]; (t.wis||[t.wi]).forEach(wi=>{ words[wi].bad=true; });
+    }
+  }
   // Phrases to point out: each displaced word with a word of context either side, merged when close.
   const wis=[...new Set(displaced.map(d=>ref.toks[req[d.i]].wi))].sort((x,y)=>x-y);
   const groups=[]; wis.forEach(wi=>{ const g=groups[groups.length-1]; if(g&&wi-g[1]<=4) g[1]=wi; else groups.push([wi,wi]); });
@@ -813,7 +838,7 @@ function gradePlain(answer,text,mode,opts){
     if(wi>=0) (words[wi][key]=words[wi][key]||[]).push(label);
   };
   const anchorAt=j=>{ const x=before(j); const wi=x>=0?ref.toks[req[x]].wi:(pairs.length?ref.toks[req[pairs[0][0]]].wi:reqWords[0]); return posOf.has(wi)?posOf.get(wi):0; };
-  slashAnd.forEach(j=>anchors.push(anchorAt(j)));
+  slashAnd.forEach(j=>anchors.push(anchorAt(j))); orAnd.forEach(j=>anchors.push(anchorAt(j)));
   Object.keys(got).forEach(t=>{
     let extra=got[t]-(want[t]||0); if(extra<=0) return;
     for(let j=0;j<m&&extra>0;j++){ if(user[j]!==t||usedU.has(j)) continue; extra--; anchors.push(anchorAt(j)); markExtra(j,CRIT_LABEL[t]||t); }
@@ -830,11 +855,17 @@ function fixTargets(answer,g,opts){
   opts=opts||{};
   const ref=refOf(answer); const P=ref.parts, CL=ref.clause;
   const size=ci=>P.filter((w,pi)=>CL[pi]===ci&&w.trim()&&!/^[\u2022\u25e6]$/.test(w.trim())).length;
-  const out=[]; const seen=new Set();
+  const ranges=[];
   g.mistakes.forEach(mk=>{
     let lo=Math.min(...mk.words.map(wi=>CL[wi])), hi=Math.max(...mk.words.map(wi=>CL[wi]));
     if(!opts.any&&size(lo)+(hi>lo?size(hi):0)<3){ if(lo>0) lo--; else hi++; }
-    const key=lo+':'+hi; if(seen.has(key)) return; seen.add(key);
+    ranges.push([lo,hi]);
+  });
+  // Parts that overlap or sit side by side are one part, so nothing is shown (or typed) twice.
+  ranges.sort((x,y)=>x[0]-y[0]); const merged=[];
+  for(const r of ranges){ const L=merged[merged.length-1]; if(L&&r[0]<=L[1]+1) L[1]=Math.max(L[1],r[1]); else merged.push(r.slice()); }
+  const out=[];
+  merged.forEach(([lo,hi])=>{
     const text=P.filter((w,pi)=>CL[pi]>=lo&&CL[pi]<=hi).join('').replace(/(^|\n)\s*[\u2022\u25e6]\s*/g,'$1').trim();
     if(text) out.push({text});
   });
@@ -851,7 +882,7 @@ function gradeProt(expected,text){
 // Cards whose answer is "None" (no contraindications) or "Not indicated for use in pediatrics".
 const NONE_OK=new Set(['none','na','n a','not applicable','no contraindications','none listed']);
 const NA_OK=new Set(['na','n a','not applicable','not indicated','none']);
-const optsOf=item=>({any:!!item.any,lenient:!!item.lenient,eff:!!item.eff,alt:item.alt||null,phr:!!item.phr});
+const optsOf=item=>({any:!!item.any,lenient:!!item.lenient,eff:!!item.eff,alt:item.alt||null,phr:!!item.phr,andok:!!item.andok});
 function gradeItem(item,text,mode){
   if(item.none||item.na){
     const raw=norm(text), t=raw.filter(x=>x!=='a'&&x!=='an'&&x!=='the').join(' ');
@@ -886,7 +917,7 @@ function liveCheck(item,text,mode){
   // A term still being spelled out ("non steroidal anti ..." before "drug") isn't a mistake yet.
   const U=U0.slice(0,U0.length-pendingTail(U0,ref,lee));
   if(!U.length) return {state:'ok'};
-  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt&&!andSkips(ref,O,i)) req.push(i); });
   const R=req.map(i=>effRef(ref.toks[i].t,O));
   const optT=new Set(ref.toks.filter(x=>x.opt).map(x=>x.t));
   const soft=t=>t==='and'||t==='or'||optT.has(t);
@@ -997,7 +1028,7 @@ function nextWord(item,text,mode){
   if(item.na) return 'NA';
   const ref=refOf(item.a,item.phr); const lee=LEEWAY[mode];
   const O=optsOf(item);
-  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });   // (next word shows the card's own words, a joining "and" included)
   const R=req.map(i=>effRef(ref.toks[i].t,O));
   if(!R.length) return null;
   // A word that could start a longer term ("myocardial" → MI) only counts as unfinished if it doesn't already fit.
@@ -1304,7 +1335,7 @@ const NOTES=[
 const CLASS_ALT={'Buprenorphine-Naloxone':[['partial opioid agonist','opioid partial agonist']]};
 const MOA_ALT={Aspirin:[['analgesic and antipyretic','antipyretic and analgesic']]};
 const BUILTIN=[
- {id:'moa',title:'Learn every mechanism of action',short:'Mechanisms',ask:'Mechanism of Action',ph:'Type the full mechanism of action',unit:'cards',items:MOA.map(([d,a])=>Object.assign({d,a,nw:1,eff:1},MOA_ALT[d]?{alt:MOA_ALT[d]}:{}))},
+ {id:'moa',title:'Learn every mechanism of action',short:'Mechanisms',ask:'Mechanism of Action',ph:'Type the full mechanism of action',unit:'cards',items:MOA.map(([d,a])=>Object.assign({d,a,nw:1,eff:1,andok:1},MOA_ALT[d]?{alt:MOA_ALT[d]}:{}))},
  {id:'class',title:'Learn every classification',short:'Classifications',ask:'Classification',hint:'Phrases in any order',ph:'Type the classification',unit:'drugs',items:CLASS.map(([d,a])=>Object.assign({d,a,any:1,phr:1},CLASS_ALT[d]?{alt:CLASS_ALT[d]}:{}))},
  {id:'ind',title:'Learn every indication',short:'Indications',ask:'Indications',ph:'Type the indications',unit:'cards',items:IND.map(([d,a,p])=>({d,a,p,nw:1}))},
  {id:'contra',title:'Learn every contraindication',short:'Contraindications',ask:'Contraindications',hint:'If none, write \u201cNone\u201d',ph:'Type the contraindications',unit:'drugs',items:CONTRA.map(([d,a,x])=>x?{d,a,none:1,nw:1}:{d,a,nw:1})},
@@ -1684,7 +1715,8 @@ function renderHome(){
   ${dayRow()}
   <section class="set-card" aria-label="Settings">
     ${sw1('exactHome',m==='exact','Word for word','Off: key words only')}
-    ${sw1('liveHome',store.settings.live,'Mistake warning','A warning counts as a miss')}
+    ${sw1('liveHome',store.settings.live,'Mistake warning','Warns you as you type')}
+    ${sw1('warnMissHome',store.settings.warnMiss!==false,'Warning counts as a miss','Off: fix it and the card still counts')}
     ${sw1('protHome',store.settings.prot!==false,'Ask for protocol numbers','On indication cards')}
     ${sw1('auto',store.settings.auto,'Skip ahead after a correct answer','')}
   </section>
@@ -1711,6 +1743,7 @@ function renderHome(){
   document.getElementById('exactHome').addEventListener('change',e=>{ store.settings.mode=e.target.checked?'exact':'keys'; touch(); });
   document.getElementById('auto').addEventListener('change',e=>{ store.settings.auto=e.target.checked; touch(); });
   document.getElementById('liveHome').addEventListener('change',e=>{ store.settings.live=e.target.checked; touch(); });
+  document.getElementById('warnMissHome').addEventListener('change',e=>{ store.settings.warnMiss=e.target.checked; touch(); });
   document.getElementById('protHome').addEventListener('change',e=>{ store.settings.prot=e.target.checked; touch(); });
 }
 
@@ -1751,8 +1784,64 @@ function syncDraft(){
   const pe=protEl(); run.draft={k:draftKey(),a:ans.value,p:pe?pe.value:''};
 }
 
+/* Two drugs on one card: a box per drug with its name in front, so you never type the names. What you type is
+   written into the answer box behind the scenes as "• Name: …" lines, so checking, the mistake warning, next word
+   and saving work as for any card. A section about one drug of a two-drug card (Albuterol / Levalbuterol's
+   mechanisms) shows that drug's name over the box. */
+const DRUG_WORDS=new Set(DRUGS.flatMap(n=>n.replace(/\([^)]*\)/g,' ').split(/[\s\/-]+/)).filter(w=>/^[A-Z][a-z]/.test(w)).map(w=>w.toLowerCase()));
+function drugParts(item){
+  if(!item||typeof item.a!=='string') return null;
+  const labels=[];
+  for(const ln of item.a.split('\n')){ const m=/^\s*•\s*([A-Z][A-Za-z]+):\s/.exec(ln); if(!m||!DRUG_WORDS.has(m[1].toLowerCase())) return null; labels.push(m[1]); }
+  return labels.length>=2&&new Set(labels).size===labels.length?labels:null;
+}
+function drugLabel(item,deck){ return deck&&deck.card&&/\s\/\s/.test(deck.title)&&item&&item.d!==deck.title?item.d:''; }
+function composeDrugs(labels,vals){
+  let last=-1; vals.forEach((v,i)=>{ if(v.trim()) last=i; });
+  return labels.slice(0,last+1).map((l,i)=>'• '+l+': '+vals[i].replace(/\n/g,' ').replace(/^\s+/,'')).join('\n');
+}
+function decomposeDrugs(labels,text){
+  const vals=labels.map(()=>''); let cur=-1;
+  String(text||'').split('\n').forEach(ln=>{
+    const m=/^\s*•?\s*([A-Za-z]+):\s?(.*)$/.exec(ln); const i=m?labels.findIndex(l=>l.toLowerCase()===m[1].toLowerCase()):-1;
+    if(i>=0){ cur=i; vals[i]=m[2]; } else if(ln.trim()){ const j=cur<0?0:cur; vals[j]+=(vals[j]?' ':'')+ln.replace(/^\s*•\s*/,''); }
+  });
+  return vals;
+}
+let dbKey='';
+const drugBoxesOn=()=>{ const w=document.getElementById('drugBoxes'); return !!(w&&!w.hidden); };
+function syncDrugBoxes(){
+  const wrap=document.getElementById('drugBoxes'), lbl=document.getElementById('drugLbl'); if(!wrap||!run) return;
+  const item=curItem(), labels=drugParts(item), one=labels?'':drugLabel(item,curDeck());
+  lbl.hidden=!one; lbl.textContent=one?one+':':'';
+  if(!labels){ wrap.hidden=true; if(dbKey){ wrap.innerHTML=''; dbKey=''; } ans.hidden=false; const kh=document.getElementById('keyHint'); if(kh) kh.textContent='Enter submits. Shift+Enter adds a new line.'; return; }
+  const key=run.deckId+'#'+run.cur;
+  if(dbKey!==key){
+    dbKey=key;
+    wrap.innerHTML=labels.map((l,i)=>`<label class="db-row"><span class="db-name">${esc(l)}:</span><textarea class="db-box" data-i="${i}" rows="2" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="${i<labels.length-1?'next':'send'}" aria-label="${esc(l)}"></textarea></label>`).join('');
+    const boxes=()=>[...wrap.querySelectorAll('.db-box')];
+    boxes().forEach(b=>{
+      b.addEventListener('input',()=>{ ans.value=composeDrugs(labels,boxes().map(x=>x.value)); ans.dispatchEvent(new Event('input')); });
+      b.addEventListener('keydown',e=>{
+        if(e.key!=='Enter'||e.shiftKey||e.isComposing) return; e.preventDefault();
+        const i=+b.dataset.i, bx=boxes(); if(i<bx.length-1&&!b.readOnly) bx[i+1].focus(); else primary();
+      });
+    });
+  }
+  wrap.hidden=false; ans.hidden=true;
+  const kh=document.getElementById('keyHint'); if(kh) kh.textContent='Enter moves to the next box; in the last box it submits.';
+  const bx=[...wrap.querySelectorAll('.db-box')];
+  if(composeDrugs(labels,bx.map(x=>x.value))!==ans.value){ const vals=decomposeDrugs(labels,ans.value); bx.forEach((b,i)=>{ b.value=vals[i]; }); }
+  bx.forEach(b=>{ b.readOnly=ans.readOnly; b.placeholder=ans.readOnly?'':ans.placeholder&&/part/i.test(ans.placeholder)?'Type the part for this drug, if any':'Type here'; b.classList.toggle('good',ans.classList.contains('good')); });
+}
+function focusDrugBoxes(){
+  const bx=[...document.querySelectorAll('#drugBoxes .db-box')]; if(!bx.length) return false;
+  const b=bx.find(x=>!x.value.trim())||bx[bx.length-1]; try{ b.focus({preventScroll:true}); const n=b.value.length; b.setSelectionRange(n,n); }catch(e){}
+  return true;
+}
+
 function renderDrill(){
-  const deck=curDeck();
+  const deck=curDeck(); dbKey='';
   app.innerHTML=`
   <div class="topbar">
     <button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button>
@@ -1778,6 +1867,8 @@ function renderDrill(){
   </div>
   <div id="mnPanel" class="mn-panel" hidden></div>
   <div id="fb"></div>
+  <div class="drug-lbl" id="drugLbl" hidden></div>
+  <div class="drug-boxes" id="drugBoxes" hidden></div>
   <label for="ans" class="sr-only">Your answer</label>
   <textarea id="ans" rows="3" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="send"></textarea>
   <p class="live-warn" id="liveWarn" hidden>Something’s off…</p>
@@ -1789,10 +1880,10 @@ function renderDrill(){
     <button class="btn" id="nwBtn" data-act="nextword" hidden>Show next word <span class="cost">counts as a miss</span></button>
   </div>
   <div class="switches">
-    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning <span class="cost">a warning counts as a miss</span></span></label>
+    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning <span class="cost" id="liveCost">a warning counts as a miss</span></span></label>
     <label class="switch-row" id="protSwitchRow" hidden><input type="checkbox" role="switch" id="protSwitch"> <span>Ask for protocol numbers</span></label>
   </div>
-  <p class="hint">Enter submits. Shift+Enter adds a new line.</p>`;
+  <p class="hint" id="keyHint">Enter submits. Shift+Enter adds a new line.</p>`;
   ans=document.getElementById('ans');
   if(run.draft&&run.draft.k===draftKey()){ ans.value=run.draft.a||''; protEl().value=run.draft.p||''; }
   ans.addEventListener('keydown',e=>{
@@ -1807,7 +1898,8 @@ function renderDrill(){
   document.getElementById('protSwitch').addEventListener('change',e=>{ store.settings.prot=e.target.checked; touch(); if(run.fix) run.fix=normFix(run.fix); saveRun(); paint(); });
   document.getElementById('liveSwitch').addEventListener('change',e=>{ store.settings.live=e.target.checked; touch(); paintLive(); });
   paint();
-  setTimeout(()=>{ try{ ans.focus({preventScroll:true}); const n=ans.value.length; ans.setSelectionRange(n,n); }catch(e){} },30);
+  new MutationObserver(()=>{ const w=document.getElementById('drugBoxes'); if(w) w.querySelectorAll('.db-box').forEach(b=>b.classList.toggle('good',ans.classList.contains('good'))); }).observe(ans,{attributes:true,attributeFilter:['class']});
+  setTimeout(()=>{ if(drugBoxesOn()&&focusDrugBoxes()) return; try{ ans.focus({preventScroll:true}); const n=ans.value.length; ans.setSelectionRange(n,n); }catch(e){} },30);
 }
 
 // bold: the answer at the top while you retype a part below it; mistakes are bold there, and only the part you retype is highlighted.
@@ -1863,8 +1955,9 @@ function paintLive(){
   if(!on){ w.hidden=true; ans.classList.remove('warnb'); return; }
   const lc=liveCheck(curItem(),ans.value,store.settings.mode);
   if(lc.state==='stop'){ liveStop(lc); return; }
-  // Only a warning that actually shows makes the card a miss; a clean answer with the switch on still counts.
-  if(lc.state==='warn'&&run.phase==='answer'&&!pres().assisted){ pres().assisted=true; saveRun(); }
+  // Only a warning that actually shows makes the card a miss (unless warnings are set not to count);
+  // a clean answer with the switch on still counts. Being stopped is always a miss.
+  if(lc.state==='warn'&&run.phase==='answer'&&!pres().assisted&&store.settings.warnMiss!==false){ pres().assisted=true; saveRun(); }
   w.hidden=lc.state!=='warn'; ans.classList.toggle('warnb',lc.state==='warn');
 }
 function liveStop(lc){
@@ -2022,6 +2115,7 @@ function paint(){
   const pe=protEl(); document.getElementById('protRow').hidden=!needProt(item);
   document.getElementById('protSwitchRow').hidden=!item.p; document.getElementById('protSwitch').checked=store.settings.prot!==false;
   document.getElementById('liveSwitch').checked=!!store.settings.live;
+  document.getElementById('liveCost').textContent=store.settings.warnMiss!==false?'a warning counts as a miss':'warnings don\u2019t count';
   // tools: mnemonic (adverse effects) and next word (mechanism, indications, contraindications, notes)
   const answering=run.phase==='answer';
   const mnBtn=document.getElementById('mnBtn'); mnBtn.hidden=!item.mn||!answering||p.redo; mnBtn.innerHTML=p.mn?'Hide mnemonic':`Show mnemonic${p.hinted?'':' <span class="cost">counts as a miss</span>'}`;
@@ -2041,6 +2135,7 @@ function paint(){
     pe.placeholder=k==='prot'||kp?'Type the protocols in the dashed box':'';
   }
   ans.classList.remove('good','shake'); pe.classList.remove('good','shake');
+  syncDrugBoxes();
   syncDraft(); saveRun();
   paintFeedback(); paintLive();
 }
@@ -2049,7 +2144,7 @@ function focusActive(){
   try{
     const pe=protEl();
     if(run&&run.phase==='retype'&&normFix(run.fix).targets[normFix(run.fix).i].kind==='prot') pe.focus({preventScroll:true});
-    else ans.focus({preventScroll:true});
+    else if(!(drugBoxesOn()&&focusDrugBoxes())) ans.focus({preventScroll:true});
   }catch(e){}
 }
 
@@ -2180,7 +2275,7 @@ function advance(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function shake(el){ el=el||ans; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+function shake(el){ el=el||ans; if(el===ans&&drugBoxesOn()) el=document.getElementById('drugBoxes'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 
 function finish(){
   const deck=curDeck();
@@ -2336,7 +2431,9 @@ app.addEventListener('click',e=>{
     case 'mode': store.settings.mode=b.dataset.v; touch(); render(); break;
     case 'go': primary(); break;
     case 'reveal':
-      if(run&&fromMemory()) miss('',null,protEl().value,null);
+      // With something typed, Show answer checks it like Check: if it's right it counts, and if not you only fix
+      // what's wrong (the answer shows either way). With nothing typed, it just shows the answer.
+      if(run&&fromMemory()){ if(ans.value.trim()) primary(); else miss('',null,protEl().value,null); }
       break;
     case 'override': if(run&&run.phase==='retype') override(); break;
     case 'nextword': {
