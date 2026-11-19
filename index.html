@@ -360,10 +360,38 @@ const LEEWAY = {
 const CRIT = t => t==='and'||t==='or'||t==='not'||t==='no'||t==='gte'||t==='gt'||t==='lte'||t==='lt'||/^\d/.test(t);
 const CRIT_LABEL = {gte:'≥',gt:'>',lte:'≤',lt:'<'};
 
+// Numbers written out count the same as digits: "beta two" = "beta-2", "three times" = "3 times",
+// "twenty-four" = "24", "second-degree" = "2nd-degree" = "2-degree" (but "6-second" stays a length of time).
+const NUMW={zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10,eleven:11,twelve:12,thirteen:13,fourteen:14,fifteen:15,sixteen:16,seventeen:17,eighteen:18,nineteen:19,twenty:20,thirty:30,forty:40,fifty:50,sixty:60,seventy:70,eighty:80,ninety:90};
+const ORDW={first:1,second:2,third:3,fourth:4,fifth:5,sixth:6,seventh:7,eighth:8,ninth:9,tenth:10};
+const NUM_RE=new RegExp('\\b(?:'+Object.keys(NUMW).join('|')+'|hundred|thousand)(?:[\\s-]+(?:'+Object.keys(NUMW).join('|')+'|hundred|thousand))*\\b','g');
+const ORD_RE=new RegExp('\\b(?:'+Object.keys(ORDW).join('|')+')\\b','g');
+function spellNumbers(s){
+  s=s.replace(NUM_RE,m=>{
+    const out=[]; let tot=null, cur=null, last='';
+    const flush=()=>{ if(tot!=null||cur!=null) out.push(String((tot||0)+(cur||0))); tot=null; cur=null; last=''; };
+    for(const w of m.split(/[\s-]+/)){
+      if(w==='hundred'){ if(last==='h') flush(); cur=(cur==null?1:cur)*100; last='h'; continue; }
+      if(w==='thousand'){ if(last==='k') flush(); tot=(cur==null?1:cur)*1000; cur=null; last='k'; continue; }
+      const v=NUMW[w];
+      if(v>=20&&v%10===0){
+        if(last==='h') cur+=v; else if(last==='k'&&cur==null) cur=v; else { flush(); cur=v; }
+        last='t';
+      } else {
+        if(last==='t'&&v<10&&cur%10===0) cur+=v; else if(last==='h') cur+=v; else if(last==='k'&&cur==null) cur=v; else { flush(); cur=v; }
+        last='u';
+      }
+    }
+    flush(); return out.join(' ');
+  });
+  s=s.replace(ORD_RE,(m,off,all)=>m==='second'&&/\d[\s-]*$/.test(all.slice(0,off))?m:String(ORDW[m]));
+  return s.replace(/\b(\d+)(?:st|nd|rd|th)\b/g,'$1');
+}
 function norm(str){
   // The route IN (intranasal) is not the word "in": uppercase IN, "in" slashed with another route,
   // or "in" right after a dose unit that ends the phrase ("50 mcg in q15 min", not "in 100 mL" or "in a 24-hour period").
   let s = String(str).replace(/\bIN\b/g,' intranasal ').toLowerCase();
+  s = spellNumbers(s);
   s = s.replace(/\b(iv|im|io|po|sl|odt)\s*\/\s*in\b/g,'$1/intranasal').replace(/\bin(?=\s*\/\s*(?:iv|im|io|po|sl|odt|intranasal)\b)/g,'intranasal');
   s = s.replace(/\b(mcg|mg|kg|ml|gm|g)\s+in\b(?=\s*(?:$|[,.;:()]|q\s*\d|per\b|x\s*\d|mr\b|bh))/g,'$1 intranasal');
   s = s.replace(/&/g,' and ').replace(/β/g,' beta ').replace(/[µμ]g/g,' mcg ').replace(/[µμ]/g,' mu ');
