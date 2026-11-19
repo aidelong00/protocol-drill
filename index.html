@@ -1978,6 +1978,36 @@ function paintLive(){
   if(lc.state==='warn'&&run.phase==='answer'&&!pres().assisted&&store.settings.warnMiss!==false){ pres().assisted=true; saveRun(); }
   w.hidden=lc.state!=='warn'; ans.classList.toggle('warnb',lc.state==='warn');
 }
+// Stopping partway (Show answer, or Check while the mistake warning is showing) isn't finishing: only what you've
+// typed is graded, the part you haven't reached yet isn't a mistake, and you keep going from where you left off.
+function partialInfo(item,text,mode){
+  if(!item||item.any||item.none||item.na||typeof item.a!=='string'||parseAnswer(item.a).some(s=>s.k)) return null;
+  const g=gradeItem(item,text,mode); if(g.pass||!g.res||g.res.length!==1||!g.res[0].parts) return null;
+  // where you got to: the same nearby-first reading as "Show next word" (a word that comes again later doesn't count)
+  const ref=refOf(item.a,item.phr), lee=LEEWAY[mode], O=optsOf(item);
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt&&!andSkips(ref,O,i)) req.push(i); });
+  const R=req.map(i=>effRef(ref.toks[i].t,O)), U=userToks(text,ref,lee,O);
+  const last=nearLast(R,U); if(last<0||R.length-1-last<=2) return null;   // you reached the end: that's a normal check
+  const tk=ref.toks[req[last]], pos=Math.max(...(tk.wis||[tk.wi]));
+  // grade what you typed against the answer up to there; nothing after it is marked
+  const pg=gradePlain(ref.parts.slice(0,pos+1).join(''),text,mode==='exact'?'exact':'keys',O);
+  const shown=JSON.parse(JSON.stringify(g)); let wrong=0;
+  shown.res[0].parts.forEach((q,i)=>{
+    const r=i<=pos&&pg.res&&pg.res[0]&&pg.res[0].parts?pg.res[0].parts[i]:null;
+    if(r){ q.ok=r.ok; q.bad=r.bad; q.ord=r.ord; if(r.x) q.x=r.x; else delete q.x; if(r.px) q.px=r.px; else delete q.px; if((q.req&&!q.ok)||q.bad||q.x||q.px) wrong++; }
+    else { q.ok=true; q.bad=false; q.ord=false; delete q.x; delete q.px; }
+  });
+  return {shown,wrong};
+}
+function cutOff(){
+  countMiss(); pres().nw=null;
+  run.phase='retype'; run.retried=false;
+  run.fix={targets:[{kind:'memory'}],i:0};
+  run.last={text:ans.value,missing:[],prot:protEl().value,cutoff:true};
+  saveRun(); paint(); focusActive();
+  try{ ans.setSelectionRange(ans.value.length,ans.value.length); }catch(e){}
+  const fb=document.getElementById('fb'); if(fb&&fb.scrollIntoView) fb.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
 function liveStop(lc){
   countMiss(); pres().nw=null;
   const keep=ans.value.slice(0,lc.cut).replace(/\s+$/,'');
@@ -2052,6 +2082,13 @@ function paintFeedback(){
     return;
   }
   const fx=normFix(run.fix); const cur=fx.targets[fx.i];
+  if(cur.kind==='memory'&&run.last.cutoff){
+    const info=partialInfo(item,run.last.text,mode);
+    const shownHTML=info?answerHTML(item,info.shown,true):answerHTML(item,gradeItem(item,run.last.text,mode),true);
+    const what=info&&info.wrong?'Fix the bold part, then keep going from where you left off.':'Keep going from where you left off.';
+    fb.innerHTML=`<div class="fb miss"><div class="fb-head">Answer</div><p class="fb-ans">${shownHTML}</p>${run.last.text.trim()?`<p class="fb-small">You wrote: ${esc(run.last.text)}</p>`:''}<p class="fb-small"><b>${what}</b> This counts as a miss and the card comes back later.</p></div>`;
+    return;
+  }
   if(cur.kind==='memory'){
     const live=ans&&ans.value.trim()?ans.value:'';
     fb.innerHTML=`<div class="fb miss"><div class="fb-head">Stopped</div>${stopHTML(item,run.last)}<p class="fb-small"><b>${run.last.kept?'Pick up from the start of that sentence, from memory.':'Start over from the beginning, from memory.'}</b> This counts as a miss and the card comes back later.</p>${live?'':''}</div>`;
@@ -2194,6 +2231,10 @@ function primary(){
   const memory=fromMemory();
   if(memory){
     if(!text.trim()){ shake(ans); return; }
+    // Cut off partway (after being stopped, or checking while the warning is up): grade only what you've typed.
+    const lw=document.getElementById('liveWarn');
+    const cut=run.phase==='retype'||(run.phase==='answer'&&lw&&!lw.hidden);
+    if(cut&&partialInfo(item,text,mode)){ cutOff(); return; }
     if(needProt(item)&&!pv.trim()){ shake(protEl()); protEl().focus(); return; }
     const g=gradeItem(item,text,mode); const pg=needProt(item)?gradeProt(item.p,pv):null;
     if(g.pass&&(!pg||pg.pass)){
@@ -2451,7 +2492,11 @@ app.addEventListener('click',e=>{
     case 'reveal':
       // With something typed, Show answer checks it like Check: if it's right it counts, and if not you only fix
       // what's wrong (the answer shows either way). With nothing typed, it just shows the answer.
-      if(run&&fromMemory()){ if(ans.value.trim()) primary(); else miss('',null,protEl().value,null); }
+      if(run&&fromMemory()){
+        if(!ans.value.trim()) miss('',null,protEl().value,null);
+        else if(partialInfo(curItem(),ans.value,store.settings.mode)) cutOff();
+        else primary();
+      }
       break;
     case 'override': if(run&&run.phase==='retype') override(); break;
     case 'nextword': {
