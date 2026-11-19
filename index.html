@@ -807,7 +807,7 @@ function grade(answer,text,mode,opts){
 
 /* ---- Catch mistakes as you type ---- */
 // After a mistake, LIVE_WARN more words shows a quiet warning; LIVE_STOP more words stops you.
-const LIVE_WARN=2, LIVE_STOP=5;
+const LIVE_SKIP_STOP=3, LIVE_WARN=2, LIVE_STOP=5;
 const SHOW_TOK={asa:'ASA','5ht3':'5-HT3',nasalroute:'IN',hrate:'heart rate',w:'with',wo:'without',yr:'years',yoa:'years of age',hour:'hours',gte:'\u2265',gt:'>',lte:'\u2264',lt:'<'};
 const showTok=t=>SHOW_TOK[t]||t;
 // Exact protocol wording from one token to another, small words included.
@@ -869,14 +869,30 @@ function liveCheck(item,text,mode){
   }
   if(!errs.length) return {state:'ok'};
   errs.sort((x,y)=>x.loc-y.loc);
-  // Skipped words stop you as soon as the two words after the gap match the protocol in a row;
-  // other slips (and skips not yet certain) warn after LIVE_WARN more words and stop after LIVE_STOP.
-  const sev=x=>{ const a=U.length-1-x.loc; return x.kind==='miss'&&x.conf?2:(a>=LIVE_STOP?2:a>=LIVE_WARN?1:0); };
+  // Skipped words warn as soon as the two words after the gap match the protocol in a row, and stop you
+  // if you type two more words without fixing it. Other slips (and skips not yet certain) warn after
+  // LIVE_WARN more words and stop after LIVE_STOP.
+  const sev=x=>{ const a=U.length-1-x.loc; if(x.kind==='miss'&&x.conf) return a>=LIVE_SKIP_STOP?2:1; return a>=LIVE_STOP?2:a>=LIVE_WARN?1:0; };
   const top=Math.max(...errs.map(sev)); const e=errs.find(x=>sev(x)===top);
   const state=['ok','warn','stop'][top];
   let msg='';
+  const mark={b:[],x:{},px:[],u:[]};
+  const wr=ti=>{ const x=ref.toks[ti]; const w=x.wis||[x.wi]; return [Math.min(...w),Math.max(...w)]; };
+  const boldRef=(ta,tb)=>mark.b.push([wr(ta)[0],wr(tb)[1]]);
+  const insAfter=(q,label)=>{ if(q<0) mark.px.push(label); else { const k=wr(req[q])[1]; (mark.x[k]=mark.x[k]||[]).push(label); } };
+  const userWord=(j0,j1)=>{   // characters of the words you typed that hold your tokens j0..j1
+    const raw=String(text).replace(/\S+$/,''); const ws=[]; for(let i=0;i<raw.length;i++) if(/\S/.test(raw[i])&&(i===0||/\s/.test(raw[i-1]))) ws.push(i);
+    const cb=ws.map(b=>userToks(raw.slice(0,b),ref,lee,O).length);
+    let a=-1,b=-1; for(let w=0;w<ws.length;w++){ if(cb[w]<=j0) a=w; if(cb[w]<=j1) b=w; }
+    if(a<0) return; const end=raw.slice(ws[b]).search(/\s/); mark.u.push([ws[a],end<0?raw.length:ws[b]+end]);
+  };
   if(state==='stop'){
     const nextWords=from=>from<R.length?refSlice(ref,req[from],req[Math.min(R.length-1,from+3)]):'';
+    if(e.kind==='exp'){ boldRef(req[e.k],req[e.k]); userWord(e.run[0],e.run[e.run.length-1]); }
+    else if(e.kind==='sub'){ boldRef(req[e.k],req[e.k]); userWord(e.j,e.j); }
+    else if(e.kind==='miss'){ let k1=e.k; while(errs.some(x=>x.kind==='miss'&&x.loc===e.loc&&x.k===k1+1)) k1++; boldRef(req[e.k],req[k1]); }
+    else if(item.any) userWord(e.j,e.j);
+    else { let a=-1; for(const [ri,uj] of lcsPairs(R,U)) if(uj<e.j) a=ri; insAfter(e.j<fj?a:fi,showTok(U[e.j])); userWord(e.j,e.j); }
     if(e.kind==='exp') msg=`You wrote \u201c${e.run.map(q=>showTok(U[q])).join(' ')}\u201d where P-115 says \u201c${refSlice(ref,req[e.k],req[e.k])}\u201d.`;
     else if(e.kind==='sub') msg= `You wrote \u201c${showTok(U[e.j])}\u201d where P-115 says \u201c${refWord(ref,req[e.k])}\u201d.`;
     else if(e.kind==='miss'){
@@ -909,7 +925,7 @@ function liveCheck(item,text,mode){
     }
     for(const b of [...starts].sort((x,y)=>x-y)){ if(countBefore(b)<=at) cut=b; else break; }
   }
-  return {state,msg,cut};
+  return {state,msg,cut,mark};
 }
 
 /* ---- Show next word ---- */
@@ -1719,10 +1735,24 @@ function liveStop(lc){
   const keep=ans.value.slice(0,lc.cut).replace(/\s+$/,'');
   run.phase='retype'; run.retried=false;
   run.fix={targets:[{kind:'memory'}],i:0};
-  run.last={text:ans.value,missing:[],prot:protEl().value,stop:lc.msg,kept:!!keep};
+  run.last={text:ans.value,missing:[],prot:protEl().value,stop:lc.msg,mark:lc.mark,kept:!!keep};
   ans.value=keep?keep+' ':''; saveRun(); paint(); shake(ans);
   try{ ans.focus({preventScroll:true}); ans.setSelectionRange(ans.value.length,ans.value.length); }catch(e){}
   const fb=document.getElementById('fb'); if(fb&&fb.scrollIntoView) fb.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+// A stop shows the answer with what went wrong in bold (left out, wrong word, or "+word" where a stray word went),
+// and what you typed with your stray or wrong word in bold.
+function stopHTML(item,last){
+  const m=last.mark; if(!m) return `<p class="fb-ans">${esc(last.stop||'')}</p>`;
+  const ref=refOf(item.a,item.phr); const B=new Set(); (m.b||[]).forEach(([a,b])=>{ for(let i=a;i<=b;i++) B.add(i); });
+  const xb=l=>`<b class="xb">+${esc(l)}</b>`;
+  let h=(m.px||[]).map(xb).join(' ')+((m.px||[]).length?' ':'');
+  ref.parts.forEach((w,i)=>{ const t=esc(w); h+=B.has(i)&&w.trim()?`<b class="xb">${t}</b>`:t; if(m.x&&m.x[i]) h+=' '+m.x[i].map(xb).join(' '); });
+  const raw=last.text||''; let u='', at=0;
+  (m.u||[]).slice().sort((p,q)=>p[0]-q[0]).forEach(([a,b])=>{ if(a<at) return; u+=esc(raw.slice(at,a))+`<b class="xb">${esc(raw.slice(a,b))}</b>`; at=b; });
+  u+=esc(raw.slice(at));
+  return `<p class="fb-ans">${h}</p>${raw.trim()?`<p class="fb-small">You wrote: ${u.trim()}</p>`:''}`;
 }
 
 /* Mnemonic panel (adverse effects) */
@@ -1776,7 +1806,7 @@ function paintFeedback(){
   const fx=normFix(run.fix); const cur=fx.targets[fx.i];
   if(cur.kind==='memory'){
     const live=ans&&ans.value.trim()?ans.value:'';
-    fb.innerHTML=`<div class="fb miss"><div class="fb-head">Stopped</div><p class="fb-ans">${esc(run.last.stop||'')}</p><p class="fb-small"><b>${run.last.kept?'Pick up from the start of that sentence, from memory.':'Start over from the beginning, from memory.'}</b> This counts as a miss and the card comes back later.</p>${live?'':''}</div>`;
+    fb.innerHTML=`<div class="fb miss"><div class="fb-head">Stopped</div>${stopHTML(item,run.last)}<p class="fb-small"><b>${run.last.kept?'Pick up from the start of that sentence, from memory.':'Start over from the beginning, from memory.'}</b> This counts as a miss and the card comes back later.</p>${live?'':''}</div>`;
     return;
   }
   const typed=!!(run.last.text.trim()||(run.last.prot||'').trim());
