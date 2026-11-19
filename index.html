@@ -1825,12 +1825,22 @@ function answerHTML(item,g,bold){
   }).join('');
 }
 
+// Everything to fix is one step with one Check: the part(s) of the answer (or the whole answer) and the protocols.
+// Two parts are typed one after the other ("…" between them in the box).
 function normFix(f){
   if(!f||f.full) return {targets:[{kind:'full'}],i:0};
-  let t=f.targets.map(t=>t.kind?t:{kind:'part',text:t.text});
-  if(run&&!needProt(curItem())) t=t.filter(x=>x.kind!=='prot');
-  if(!t.length) t=[{kind:'full'}];
-  return {targets:t,i:Math.min(f.i||0,t.length-1)};
+  let t=f.targets.slice(Math.min(f.i||0,Math.max(0,f.targets.length-1))).map(t=>t.kind?t:{kind:'part',text:t.text});
+  const wantProt=!run||needProt(curItem());
+  if(t.some(x=>x.kind==='memory')) return {targets:[t.find(x=>x.kind==='memory')],i:0};
+  const prot=wantProt&&t.some(x=>x.kind==='prot'||x.prot);
+  const parts=[]; t.forEach(x=>{ if(x.kind==='part') (x.texts||[x.text]).forEach(y=>parts.push(y)); });
+  let m;
+  if(t.some(x=>x.kind==='full')) m={kind:'full'};
+  else if(parts.length) m={kind:'part',text:parts.join(' … '),texts:parts,n:parts.length};
+  else if(prot) return {targets:[{kind:'prot'}],i:0};
+  else m={kind:'full'};
+  if(prot) m.prot=true;
+  return {targets:[m],i:0};
 }
 function protHTML(item,res,bold){
   const miss=new Set(res?res.missing:[]);
@@ -1939,13 +1949,13 @@ function paintFeedback(){
   const typed=!!(run.last.text.trim()||(run.last.prot||'').trim());
   const lg=gradeItem(item,run.last.text,mode);
   const mainN=lg.pass?0:(lg.special?1:Math.max(1,(lg.mistakes||[]).length));
-  const protWrong=fx.targets.some(t=>t.kind==='prot')&&typed;
+  const protWrong=(cur.kind==='prot'||cur.prot)&&typed;
   const n=mainN+(protWrong?1:0);
   const live=ans&&!ans.readOnly&&ans.value.trim()?ans.value:'';
   const shown=cur.kind==='full'&&live?gradeItem(item,live,mode):lg;
   let head='Answer';
   if(typed){
-    const what=fx.targets.length>1?'fix each part in turn':cur.kind==='part'?'fix just this part':cur.kind==='prot'?'fix the protocols':'retype the whole answer';
+    const what=(cur.kind==='part'?(cur.n>1?'fix these parts':'fix just this part'):cur.kind==='prot'?'fix the protocols':'retype the whole answer')+(cur.prot?' and the protocols':'');
     head=`${n===1?'1 mistake':n+' mistakes'}: ${what}`;
   }
   const mainMissing=run.last.text.trim()&&!lg.pass?lg.missing:[];
@@ -1958,26 +1968,31 @@ function paintFeedback(){
   const ordMiss=run.last.text.trim()&&lg.orderFail&&lg.order&&lg.order.length?`<p class="fb-order"><b>Out of order.</b> P-115 says: ${lg.order.map(o=>'“'+esc(o)+'”').join(', ')}</p>`:'';
   const top=cur.kind!=='full';   // retyping just a part or the protocols: that box is highlighted, the full answer above is bold
   const protLine=item.p?`<p class="fb-prot"><b>Protocols:</b> ${protHTML(item,pr,top)}</p>`:'';
-  const step=fx.targets.length>1?` part ${fx.i+1} of ${fx.targets.length}`:'';
+  const protBox=item.p?`<div class="fix"><div class="fix-label">Retype protocols</div><p class="fix-text">${protHTML(item,gradeProt(item.p,protEl().value||''))}</p><p class="fb-small">Numbers only is fine.</p></div>`:'';
   const redoNote=curDeck().card?'<p class="fb-small">After this, you’ll type the whole section once more from memory.</p>':'';
   let task;
   if(cur.kind==='part'){
     const tg=grade(cur.text,live||run.last.text,mode,optsOf(item));
-    task=`<div class="fix"><div class="fix-label">Retype${step}</div><p class="fix-text">${answerHTML({a:cur.text},tg)}</p></div>`;
-  } else if(cur.kind==='prot'){
-    task=`<div class="fix"><div class="fix-label">Retype protocols${step}</div><p class="fix-text">${protHTML(item,gradeProt(item.p,protEl().value||''))}</p><p class="fb-small">Numbers only is fine.</p></div>`;
-  } else task=`<p class="fb-small"><b>Type the whole answer to continue${step?` (${step.trim()})`:''}.</b></p>`;
+    task=`<div class="fix"><div class="fix-label">${cur.n>1?'Retype these parts, in order':'Retype'}</div><p class="fix-text">${answerHTML({a:cur.text},tg)}</p></div>`;
+  } else if(cur.kind==='prot') task=protBox;
+  else task=`<p class="fb-small"><b>Type the whole answer${cur.prot?' and the protocols':''} to continue.</b></p>`;
+  const protTask=cur.prot?protBox:'';
   const si=shownItem(item); const shownHTML=si===item?answerHTML(item,shown,top):answerHTML(si,gradeItem(si,cur.kind==='full'&&live?live:run.last.text,mode),top);
   // After a Check that didn't pass: say what's still wrong (it's also marked in the text).
   let still='';
+  let protTaskOut=protTask;
   if(p.fail){
-    let why=[];
-    if(cur.kind==='prot'){ const g2=gradeProt(item.p,protEl().value||''); if(!g2.pass) why=g2.missing.map(x=>x+' missing').concat(g2.extra.map(x=>'extra '+x)); if(!g2.pass&&!why.length) why=['type the protocol numbers']; }
-    else { const tx=ans.value; const g2=cur.kind==='part'?grade(cur.text,tx,mode,optsOf(item)):gradeItem(item,tx,mode); if(!g2.pass) why=g2.missing.length?g2.missing:['check the highlighted words']; }
-    if(why.length) still=`<p class="fb-still">Still not right: ${esc(why.slice(0,10).join(', '))}${why.length>10?'…':''}</p>`;
+    let why=[], whyP=[];
+    if(cur.kind==='prot'||cur.prot){ const g2=gradeProt(item.p,protEl().value||''); if(!g2.pass){ whyP=g2.missing.map(x=>x+' missing').concat(g2.extra.map(x=>'extra '+x)); if(!whyP.length) whyP=['type the protocol numbers']; } }
+    if(cur.kind!=='prot'){ const tx=ans.value; const g2=cur.kind==='part'?grade(cur.text,tx,mode,optsOf(item)):gradeItem(item,tx,mode); if(!g2.pass) why=g2.missing.length?g2.missing:['check the highlighted words']; }
+    const line=w=>w.length?`<p class="fb-still">Still not right: ${esc(w.slice(0,10).join(', '))}${w.length>10?'…':''}</p>`:'';
+    if(cur.kind==='prot') task=task.replace(/<\/div>$/,line(whyP)+'</div>');
+    else {
+      if(cur.kind==='part') task=task.replace(/<\/div>$/,line(why)+'</div>'); else still=line(why);
+      if(cur.prot) protTaskOut=protTask.replace(/<\/div>$/,line(whyP)+'</div>');
+    }
   }
-  if(still&&cur.kind!=='full') task=task.replace(/<\/div>$/,still+'</div>'), still='';
-  fb.innerHTML=`<div class="fb miss"><div class="fb-head">${head}</div>${list}<p class="fb-ans">${shownHTML}</p>${still}${protLine}${ordMiss}${you}${note}${task}${redoNote}${over}</div>`;
+  fb.innerHTML=`<div class="fb miss"><div class="fb-head">${head}</div>${list}<p class="fb-ans">${shownHTML}</p>${still}${protLine}${ordMiss}${you}${note}${task}${protTaskOut}${redoNote}${over}</div>`;
 }
 
 function paint(){
@@ -2019,11 +2034,11 @@ function paint(){
   if(run.phase==='answer'){ go.textContent='Check'; rv.hidden=false; ans.placeholder=p.redo?'Type it again from memory':sd.ph; pe.placeholder='S-numbers, or just the numbers'; }
   else if(run.phase==='correct'){ go.textContent=run.redoNext?'Type it from memory':run.queue.length?'Next card':'Finish run'; rv.hidden=true; }
   else {
-    const fx=normFix(run.fix); const k=fx.targets[fx.i].kind;
+    const fx=normFix(run.fix); const k=fx.targets[fx.i].kind, kp=!!fx.targets[fx.i].prot;
     go.textContent='Check'; rv.hidden=k!=='memory';
-    ans.readOnly=(k==='prot'); pe.readOnly=!(k==='prot'||k==='memory');
-    ans.placeholder=k==='part'?'Type the part in the dashed box':k==='full'?'Type the whole answer above':k==='memory'?'Keep going from memory':'Answer done';
-    pe.placeholder=k==='prot'?'Type the protocols in the dashed box':'';
+    ans.readOnly=(k==='prot'); pe.readOnly=!(k==='prot'||k==='memory'||kp);
+    ans.placeholder=k==='part'?(fx.targets[fx.i].n>1?'Type the parts in the dashed box, in order':'Type the part in the dashed box'):k==='full'?'Type the whole answer above':k==='memory'?'Keep going from memory':'Answer done';
+    pe.placeholder=k==='prot'||kp?'Type the protocols in the dashed box':'';
   }
   ans.classList.remove('good','shake'); pe.classList.remove('good','shake');
   syncDraft(); saveRun();
@@ -2094,17 +2109,20 @@ function primary(){
     } else miss(text,g,pv,pg);
     return;
   }
-  // retype: one step at a time
+  // retype: everything to fix is checked at once
   run.retried=true;
   const fx=normFix(run.fix); const t=fx.targets[fx.i];
-  const ok=t.kind==='prot'?gradeProt(item.p,pv).pass:t.kind==='part'?grade(t.text,text,mode,optsOf(item)).pass:gradeItem(item,text,mode).pass;
-  const el=t.kind==='prot'?protEl():ans;
-  if(ok){
-    el.classList.add('good');
-    if(fx.i<fx.targets.length-1){ fx.i++; run.fix=fx; p.fail=false; saveRun(); setTimeout(()=>{ if(t.kind!=='prot') ans.value=''; paint(); focusActive(); },300); }
-    else if(curDeck().card&&!p.redo){ saveRun(); setTimeout(redo,350); }
+  const okText=t.kind==='prot'?true:t.kind==='part'?grade(t.text,text,mode,optsOf(item)).pass:gradeItem(item,text,mode).pass;
+  const okProt=(t.kind==='prot'||t.prot)?gradeProt(item.p,pv).pass:true;
+  if(okText&&okProt){
+    if(t.kind!=='prot') ans.classList.add('good'); if(t.kind==='prot'||t.prot) protEl().classList.add('good');
+    if(curDeck().card&&!p.redo){ saveRun(); setTimeout(redo,350); }
     else { saveRun(); setTimeout(advance,350); }
-  } else { p.fail=true; saveRun(); paintFeedback(); shake(el); }
+  } else {
+    p.fail=true; saveRun(); paintFeedback();
+    if(!okText) shake(ans); if(!okProt) shake(protEl());
+    if(okText&&!okProt) try{ protEl().focus({preventScroll:true}); }catch(e){}
+  }
 }
 
 // Drug cards: after a miss, type the section once more from memory before moving on.
