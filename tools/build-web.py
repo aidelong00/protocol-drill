@@ -90,9 +90,10 @@ async function onUser(u){
     const mine=store.uid===u.uid;
     if(snap.exists()){
       const d=cleanStore(JSON.parse(JSON.stringify(snap.data()||{})));
-      if(mine&&store.updatedAt>d.updatedAt){ remote=ref; scheduleRemote(); }
+      if(mine&&store.updatedAt>d.updatedAt){ mergeStreak(store,d); remote=ref; scheduleRemote(); }
       else if(!mine||d.updatedAt>store.updatedAt){
         if(store.uid&&!mine) clearRuns();
+        if(mine) mergeStreak(d,store);
         store=d; store.uid=u.uid; persistLocal(); remote=ref;
       } else remote=ref;
     } else {
@@ -140,7 +141,7 @@ async function doSignOut(){
 function acctHTML(){
   if(!fbOn()) return '';
   if(!authReady) return '<section class="acct"><span class="acct-txt">Checking sign-in…</span></section>';
-  if(fbUser) return `<section class="acct"><span class="acct-txt">Saving to <b>${esc(fbUser.email||fbUser.displayName||'your Google account')}</b></span><button class="acct-btn" data-act="signout">Sign out</button></section>`;
+  if(fbUser) return `<section class="acct"><span class="acct-txt"><b>${esc(fbUser.email||fbUser.displayName||'Signed in')}</b></span><button class="acct-btn" data-act="signout">Sign out</button></section>`;
   return `<section class="acct"><span class="acct-txt">Sign in to save your progress to your Google account</span><button class="acct-btn primary" data-act="signin">Sign in with Google</button></section>${signErr?`<p class="acct-err">${esc(signErr)}</p>`:''}`;
 }
 function updateSync(){
@@ -151,7 +152,7 @@ function updateSync(){
 s = s[:start] + WEB_SYNC + s[end:]
 
 # ---- account row on the home screen, and the two buttons
-rep('  <section class="set-card" aria-label="Settings">', '  ${acctHTML()}\n  <section class="set-card" aria-label="Settings">')
+rep('  ${dayRow()}\n  <section class="set-card" aria-label="Settings">', '  ${acctHTML()}\n  ${dayRow()}\n  <section class="set-card" aria-label="Settings">')
 rep("    case 'about': ui.screen='about'; render(); window.scrollTo({top:0}); break;",
     "    case 'about': ui.screen='about'; render(); window.scrollTo({top:0}); break;\n    case 'signin': doSignIn(); break;\n    case 'signout': doSignOut(); break;")
 

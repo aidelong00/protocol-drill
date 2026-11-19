@@ -112,7 +112,12 @@ button{font-family:inherit}
 
 /* Drill */
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px}
-.back{background:none;border:0;color:var(--ink);font:700 15px var(--font-body);padding:8px 0;cursor:pointer}
+.back{display:inline-flex;align-items:center;gap:6px;background:var(--card);border:1.5px solid var(--ink);color:var(--ink);font:700 15px/1 var(--font-body);padding:9px 14px 9px 10px;border-radius:999px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.back .chev{font-size:22px;line-height:0;margin-top:-2px}
+.dayrow{display:flex;justify-content:center;align-items:center;gap:22px;flex-wrap:wrap;text-align:center;font-size:16px;font-weight:700;color:var(--ink);padding:2px 0}
+.day-date{color:var(--muted);font-weight:600}
+.day-streak{white-space:nowrap}
+.day-streak.pending .fire{filter:grayscale(1);opacity:.55}
 .tb-right{display:flex;gap:14px;align-items:center;font-size:14px;color:var(--muted)}
 .tb-btn{background:none;border:1px solid var(--rule);color:var(--muted);font:700 13px var(--font-body);padding:6px 10px;border-radius:8px;cursor:pointer}
 .tb-btn.armed{border-color:var(--accent);color:var(--accent)}
@@ -824,6 +829,19 @@ function liveCheck(item,text,mode){
   const soft=t=>t==='and'||t==='or'||optT.has(t);
   const errs=[];
   let fi=-1, fj=-1;
+  // A skip is certain once the next two words you typed (whole words: "beta-1" is one) match the protocol
+  // words right after the gap, in a row. Gaps longer than a short phrase are left to the usual warning,
+  // since they can be a misreading of a word that appears again later.
+  const rawT=String(text).replace(/\S+$/,''); const wsList=[]; for(let i=0;i<rawT.length;i++) if(/\S/.test(rawT[i])&&(i===0||/\s/.test(rawT[i-1]))) wsList.push(i);
+  let pairsAt=null;
+  const skipSure=(qp,qn,un)=>{
+    if(qn<0||qn-qp-1>8) return false;
+    if(!pairsAt) pairsAt=new Map(lcsPairs(R,U));
+    let L=1; while(pairsAt.get(qn+L)===un+L) L++;
+    if(L<2) return false;
+    for(let w=wsList.length-1;w>=0;w--){ const c=userToks(rawT.slice(0,wsList[w]),ref,lee,O).length; if(c<=un) break; if(c<=un+L-1) return true; }
+    return false;
+  };
   if(item.any){
     U.forEach((u,j)=>{ if(!soft(u)&&!R.some(r=>tokEq(r,u))) errs.push({loc:j,kind:'unknown',j}); });
   } else {
@@ -832,15 +850,15 @@ function liveCheck(item,text,mode){
     badExpansions(R,U,pairs,used).forEach(b=>{ b.run.forEach(q=>used.add(q)); errs.push({loc:b.run[0],kind:'exp',j:b.run[0],k:b.k,run:b.run}); });
     for(let k=0;k<fi;k++){
       if(at.has(k)) continue;
-      let up=-1, un=U.length;
-      for(let q=k-1;q>=0;q--) if(at.has(q)){ up=at.get(q); break; }
-      for(let q=k+1;q<=fi;q++) if(at.has(q)){ un=at.get(q); break; }
+      let up=-1, un=U.length, qn=-1, qp=-1;
+      for(let q=k-1;q>=0;q--) if(at.has(q)){ up=at.get(q); qp=q; break; }
+      for(let q=k+1;q<=fi;q++) if(at.has(q)){ un=at.get(q); qn=q; break; }
       let flip=-1;
       for(let j=Math.max(0,up-ORDER_SLACK);j<=Math.min(U.length-1,un+ORDER_SLACK);j++){ if(!used.has(j)&&tokEq(R[k],U[j])){ flip=j; break; } }
       if(flip>=0){ used.add(flip); continue; }
       let sub=-1; for(let j=up+1;j<un;j++){ if(!used.has(j)){ sub=j; break; } }
       if(sub>=0){ used.add(sub); errs.push({loc:sub,kind:'sub',j:sub,k}); }
-      else errs.push({loc:un,kind:'miss',k,up});
+      else errs.push({loc:un,kind:'miss',k,up,conf:skipSure(qp,qn,un)});
     }
     for(let j=0;j<U.length;j++){
       if(used.has(j)||soft(U[j])) continue;
@@ -850,15 +868,21 @@ function liveCheck(item,text,mode){
     }
   }
   if(!errs.length) return {state:'ok'};
-  errs.sort((x,y)=>x.loc-y.loc); const e=errs[0];
-  const after=U.length-1-e.loc;
-  const state=after>=LIVE_STOP?'stop':after>=LIVE_WARN?'warn':'ok';
+  errs.sort((x,y)=>x.loc-y.loc);
+  // Skipped words stop you as soon as the two words after the gap match the protocol in a row;
+  // other slips (and skips not yet certain) warn after LIVE_WARN more words and stop after LIVE_STOP.
+  const sev=x=>{ const a=U.length-1-x.loc; return x.kind==='miss'&&x.conf?2:(a>=LIVE_STOP?2:a>=LIVE_WARN?1:0); };
+  const top=Math.max(...errs.map(sev)); const e=errs.find(x=>sev(x)===top);
+  const state=['ok','warn','stop'][top];
   let msg='';
   if(state==='stop'){
     const nextWords=from=>from<R.length?refSlice(ref,req[from],req[Math.min(R.length-1,from+3)]):'';
     if(e.kind==='exp') msg=`You wrote \u201c${e.run.map(q=>showTok(U[q])).join(' ')}\u201d where P-115 says \u201c${refSlice(ref,req[e.k],req[e.k])}\u201d.`;
     else if(e.kind==='sub') msg= `You wrote \u201c${showTok(U[e.j])}\u201d where P-115 says \u201c${refWord(ref,req[e.k])}\u201d.`;
-    else if(e.kind==='miss') msg=`You left out \u201c${refWord(ref,req[e.k])}\u201d${e.k>0?` after \u201c${refWord(ref,req[e.k-1])}\u201d`:''}.`;
+    else if(e.kind==='miss'){
+      let k1=e.k; while(errs.some(x=>x.kind==='miss'&&x.loc===e.loc&&x.k===k1+1)) k1++;
+      msg=`You left out \u201c${refSlice(ref,req[e.k],req[k1])}\u201d${e.k>0?` after \u201c${refWord(ref,req[e.k-1])}\u201d`:''}.`;
+    }
     else if(item.any) msg=`\u201c${showTok(U[e.j])}\u201d isn\u2019t in this list.`;
     else if(e.j<fj){
       // a stray word inside what you've typed: show the protocol wording around it
@@ -1209,7 +1233,7 @@ const BUILTIN=[
 
 /* ---------- Store ---------- */
 const LS='pdrill:v1';
-function freshStore(){ return {settings:{mode:'keys',auto:false,v:3,live:false,mnemView:'book'},progress:{},custom:[],mnem:{},mnemLast:{},updatedAt:0}; }
+function freshStore(){ return {settings:{mode:'keys',auto:false,v:3,live:false,mnemView:'book'},progress:{},custom:[],mnem:{},mnemLast:{},streak:{days:[],today:{d:'',k:[]}},updatedAt:0}; }
 function cleanStore(s){
   const f=freshStore(); if(!s||typeof s!=='object') return f;
   f.settings=Object.assign(f.settings,s.settings||{});
@@ -1220,6 +1244,7 @@ function cleanStore(s){
   f.custom=Array.isArray(s.custom)?s.custom.filter(d=>d&&d.id&&typeof d.src==='string'):[];
   f.mnem=(s.mnem&&typeof s.mnem==='object')?s.mnem:{};
   f.mnemLast=(s.mnemLast&&typeof s.mnemLast==='object')?s.mnemLast:{};
+  if(s.streak&&typeof s.streak==='object'){ f.streak.days=Array.isArray(s.streak.days)?s.streak.days.filter(d=>typeof d==='string'):[]; if(s.streak.today&&typeof s.streak.today.d==='string'&&Array.isArray(s.streak.today.k)) f.streak.today={d:s.streak.today.d,k:s.streak.today.k.slice()}; }
   f.uid=typeof s.uid==='string'?s.uid:'';
   f.updatedAt=+s.updatedAt||0; return f;
 }
@@ -1227,6 +1252,34 @@ let store=freshStore();
 try{ store=cleanStore(JSON.parse(localStorage.getItem(LS)||'null')); }catch(e){}
 function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify(store)); }catch(e){} }
 function touch(){ store.updatedAt=Date.now(); persistLocal(); scheduleRemote(); }
+
+/* Daily streak: a day counts once you've answered 3 different things with no mistakes that day
+   (a card in any deck, or a section of a drug card). Days are your phone's calendar days. */
+const STREAK_MIN=3;
+function dayKey(t){ const d=t==null?new Date():new Date(t); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function logLearned(id){
+  const st=store.streak, d=dayKey();
+  if(st.today.d!==d) st.today={d,k:[]};
+  if(st.today.k.includes(id)) return;
+  st.today.k.push(id);
+  if(st.today.k.length>=STREAK_MIN&&!st.days.includes(d)){ st.days.push(d); st.days.sort(); if(st.days.length>1500) st.days=st.days.slice(-1500); }
+  touch();
+}
+function streakNow(){
+  const st=store.streak, set=new Set(st.days), today=dayKey();
+  const doneToday=set.has(today); const dt=new Date(); dt.setHours(12,0,0,0);
+  if(!doneToday) dt.setDate(dt.getDate()-1);   // today isn't over yet: the streak runs through yesterday
+  let n=0; while(set.has(dayKey(dt))){ n++; dt.setDate(dt.getDate()-1); }
+  return {n,doneToday,today:st.today.d===today?st.today.k.length:0};
+}
+// Two copies of your progress (this device and your account): keep every streak day from both.
+function mergeStreak(into,from){
+  if(!from||!from.streak) return;
+  into.streak.days=[...new Set(into.streak.days.concat(from.streak.days||[]))].sort().slice(-1500);
+  const a=into.streak.today, b=from.streak.today;
+  if(b&&b.d){ if(a.d===b.d) a.k=[...new Set(a.k.concat(b.k))]; else if(b.d>a.d) into.streak.today={d:b.d,k:b.k.slice()}; }
+}
+let shownDay=dayKey();
 
 /* Account sync: Google sign-in (Firebase). Each person's progress is one private document, users/<uid>,
    that only they can read or write. Without signing in, progress stays on this device. */
@@ -1269,9 +1322,10 @@ async function onUser(u){
     const mine=store.uid===u.uid;
     if(snap.exists()){
       const d=cleanStore(JSON.parse(JSON.stringify(snap.data()||{})));
-      if(mine&&store.updatedAt>d.updatedAt){ remote=ref; scheduleRemote(); }
+      if(mine&&store.updatedAt>d.updatedAt){ mergeStreak(store,d); remote=ref; scheduleRemote(); }
       else if(!mine||d.updatedAt>store.updatedAt){
         if(store.uid&&!mine) clearRuns();
+        if(mine) mergeStreak(d,store);
         store=d; store.uid=u.uid; persistLocal(); remote=ref;
       } else remote=ref;
     } else {
@@ -1319,7 +1373,7 @@ async function doSignOut(){
 function acctHTML(){
   if(!fbOn()) return '';
   if(!authReady) return '<section class="acct"><span class="acct-txt">Checking sign-in…</span></section>';
-  if(fbUser) return `<section class="acct"><span class="acct-txt">Saving to <b>${esc(fbUser.email||fbUser.displayName||'your Google account')}</b></span><button class="acct-btn" data-act="signout">Sign out</button></section>`;
+  if(fbUser) return `<section class="acct"><span class="acct-txt"><b>${esc(fbUser.email||fbUser.displayName||'Signed in')}</b></span><button class="acct-btn" data-act="signout">Sign out</button></section>`;
   return `<section class="acct"><span class="acct-txt">Sign in to save your progress to your Google account</span><button class="acct-btn primary" data-act="signin">Sign in with Google</button></section>${signErr?`<p class="acct-err">${esc(signErr)}</p>`:''}`;
 }
 function updateSync(){
@@ -1438,6 +1492,7 @@ function timerHTML(id){
   return `<span class="reset-timer" data-end="${end}" title="Progress resets to 0 when this runs out. Finish a run to restart the clock."><span class="sr-only">Resets in </span>${fmtLeft(left)}</span>`;
 }
 setInterval(()=>{
+  if(dayKey()!==shownDay){ shownDay=dayKey(); if(ui.screen==='home') render(); }
   const els=document.querySelectorAll('.reset-timer[data-end]'); if(!els.length) return; let expired=false;
   els.forEach(el=>{ const left=+el.dataset.end-Date.now(); if(left<=0) expired=true; const v=el.lastChild; if(v) v.textContent=fmtLeft(left); });
   if(expired&&(ui.screen==='home'||ui.screen==='cards')) render();
@@ -1483,9 +1538,10 @@ function renderHome(){
     <h1 class="title">Protocol Drill</h1>
   </header>
   ${acctHTML()}
+  ${dayRow()}
   <section class="set-card" aria-label="Settings">
     ${sw1('exactHome',m==='exact','Word for word','Off: key words only')}
-    ${sw1('liveHome',store.settings.live,'Catch mistakes as I type','A warning counts as a miss')}
+    ${sw1('liveHome',store.settings.live,'Mistake warning','A warning counts as a miss')}
     ${sw1('protHome',store.settings.prot!==false,'Ask for protocol numbers','On indication cards')}
     ${sw1('auto',store.settings.auto,'Skip ahead after a correct answer','')}
   </section>
@@ -1527,7 +1583,7 @@ function cardRows(q){
 }
 function renderCards(){
   app.innerHTML=`
-  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">${DRUGS.length} cards</div></div>
+  <div class="topbar"><button class="back" data-act="home"><span class="chev" aria-hidden="true">‹</span>All decks</button><div class="tb-right">${DRUGS.length} cards</div></div>
   <h1 class="h-res">Learn a drug card</h1>
   <p class="lede">Every section of one card, in order: classification, mechanism, indications, contraindications, adult and pediatric doses, adverse effects and notes. Miss a section and you redo it on the spot; it also comes back later.</p>
   <label for="cardSearch" class="sr-only">Search drugs</label>
@@ -1556,7 +1612,7 @@ function renderDrill(){
   const deck=curDeck();
   app.innerHTML=`
   <div class="topbar">
-    <button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button>
+    <button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button>
     <div class="tb-right"><span>${esc(deck.short)}</span><button class="tb-btn" id="restartBtn" data-act="restart">Restart</button></div>
   </div>
   <div class="progress">
@@ -1590,7 +1646,7 @@ function renderDrill(){
     <button class="btn" id="nwBtn" data-act="nextword" hidden>Show next word <span class="cost">counts as a miss</span></button>
   </div>
   <div class="switches">
-    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Catch mistakes as I type <span class="cost">a warning counts as a miss</span></span></label>
+    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning <span class="cost">a warning counts as a miss</span></span></label>
     <label class="switch-row" id="protSwitchRow" hidden><input type="checkbox" role="switch" id="protSwitch"> <span>Ask for protocol numbers</span></label>
   </div>
   <p class="hint">Enter submits. Shift+Enter adds a new line.</p>`;
@@ -1826,7 +1882,7 @@ function focusActive(){
 }
 
 // One miss per time a card is shown, however many corrections it takes.
-// requeue=false: counted as a miss but not shown again (cards answered with "Catch mistakes as I type" on).
+// requeue=false: counted as a miss but not shown again (cards answered with "Mistake warning" on).
 function countMiss(requeue){
   const p=pres(); if(p.missed) return;
   const id=run.cur;
@@ -1873,6 +1929,7 @@ function primary(){
       }
       if(!run.missCount[run.cur]) run.firstTry++;
       if(!run.queue.includes(run.cur)&&!run.cleared.includes(run.cur)) run.cleared.push(run.cur);
+      if(!p.missed) logLearned(run.deckId+'#'+run.cur);
       run.phase='correct'; run.last={text,prot:pv};
       saveRun(); paint();
       ans.classList.add('good');
@@ -1925,6 +1982,7 @@ function override(){
     run.misses--; run.missCount[id]--;
     if(!run.missCount[id]){ delete run.missCount[id]; run.missed=run.missed.filter(x=>x!==id); run.firstTry++; }
     p.missed=false;
+    if(!p.redo&&!p.hinted&&!p.assisted) logLearned(run.deckId+'#'+id);
     // Marked right after all: if that was the run's only miss, the run hasn't failed after all.
     const pr=store.progress[run.deckId], pb=run.progBefore;
     if(pr&&pb&&run.misses===0){
@@ -1984,7 +2042,7 @@ function progBar(cp,deck){
 
 function renderAbout(){
   app.innerHTML=`
-  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">About</div></div>
+  <div class="topbar"><button class="back" data-act="home"><span class="chev" aria-hidden="true">‹</span>All decks</button><div class="tb-right">About</div></div>
   <h1 class="h-res">About</h1>
   <section class="about">
     <p>Type each answer from memory, in full. Typos are forgiven; missing words are not. Miss and you retype the answer before moving on, and the card comes back a few cards later until you clear the deck with zero errors.</p>
@@ -2007,7 +2065,7 @@ function renderResults(){
   const pct=Math.round(r.firstTry/r.total*100);
   const missedList=r.missed.map(i=>{ const it=deck.items[i]; return it?`<li><b>${esc(itemLabel(deck,it))}</b>${it.c?`<span>${esc(it.c)}</span>`:''}</li>`:''; }).join('');
   app.innerHTML=`
-  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${esc(deck.short)}</div></div>
+  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${esc(deck.short)}</div></div>
   ${r.newlyMastered?'<div class="stamp gold">Mastered</div>':perfect&&!r.subset?'<div class="stamp">Learned</div>':''}
   <h1 class="h-res">${perfect?(r.subset?'Missed cards cleared':'Perfect run'):'Run complete'}</h1>
   <p class="lede">${perfect?(r.subset?'Every missed card right on the first try. Run the full deck to go for a perfect score.':deck.card?'Every section right on the first try.':'Every card right on the first try.'):`${r.missed.length} ${deck.card?'section':'card'}${r.missed.length===1?'':'s'} missed. Restart and go for zero.`}</p>
@@ -2033,7 +2091,7 @@ function renderStudy(){
   }).join('');
   const r=loadRun(deck);
   app.innerHTML=`
-  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${deck.items.length} ${deck.unit}</div></div>
+  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${deck.items.length} ${deck.unit}</div></div>
   <h1 class="h-res">${esc(deck.title)}</h1>
   <p class="lede">${deck.card?'The full drug card':esc(deck.ask)}, word for word from P-115.</p>
   <div class="actions"><button class="btn primary" data-act="start" data-id="${esc(deck.id)}">${r?'Resume drill':'Start drill'}</button></div>
@@ -2044,7 +2102,7 @@ const EXAMPLE='Adenosine, first dose :: [6 mg] rapid IV/IO\nAtropine, unstable b
 function renderEdit(){
   const c=store.custom.find(x=>x.id===ui.editId);
   app.innerHTML=`
-  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">${c?'Edit deck':'New deck'}</div></div>
+  <div class="topbar"><button class="back" data-act="home"><span class="chev" aria-hidden="true">‹</span>All decks</button><div class="tb-right">${c?'Edit deck':'New deck'}</div></div>
   <h1 class="h-res">${c?'Edit deck':'New deck'}</h1>
   <div class="field"><label for="dName">Deck name</label><input type="text" id="dName" value="${c?esc(c.title):''}" placeholder="Cardiac arrest protocol"></div>
   <div class="field"><label for="dAsk">What each card asks for</label><input type="text" id="dAsk" value="${c?esc(c.ask||''):''}" placeholder="Answer"></div>
@@ -2149,6 +2207,12 @@ app.addEventListener('click',e=>{
     case 'del': if(arm(b,'del','Tap again to delete')){ store.custom=store.custom.filter(x=>x.id!==ui.editId); delete store.progress[ui.editId]; dropRun(ui.editId); touch(); ui.screen='home'; render(); } break;
   }
 });
+
+function dayRow(){
+  const k=streakNow(), date=new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  const tip=k.doneToday?'Today counts toward your streak.':`${Math.max(0,STREAK_MIN-k.today)} more answered with no mistakes today to keep your streak going.`;
+  return `<section class="dayrow" aria-label="Today"><span class="day-date">${esc(date)}</span><span class="day-streak${k.doneToday?'':' pending'}" title="${esc(tip)}"><span class="fire" aria-hidden="true">🔥</span> ${k.n} day streak</span></section>`;
+}
 
 function keepEdit(title,ask,src){
   render();
