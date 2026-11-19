@@ -1880,7 +1880,8 @@ function renderDrill(){
     <button class="btn" id="nwBtn" data-act="nextword" hidden>Show next word <span class="cost">counts as a miss</span></button>
   </div>
   <div class="switches">
-    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning <span class="cost" id="liveCost">a warning counts as a miss</span></span></label>
+    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning</span></label>
+    <label class="switch-row"><input type="checkbox" role="switch" id="warnMissSwitch"> <span>Warning counts as a miss</span></label>
     <label class="switch-row" id="protSwitchRow" hidden><input type="checkbox" role="switch" id="protSwitch"> <span>Ask for protocol numbers</span></label>
   </div>
   <p class="hint" id="keyHint">Enter submits. Shift+Enter adds a new line.</p>`;
@@ -1897,6 +1898,7 @@ function renderDrill(){
   protEl().addEventListener('input',()=>{ if(!run) return; syncDraft(); saveRun(); if(run.phase==='retype') paintFeedback(); });
   document.getElementById('protSwitch').addEventListener('change',e=>{ store.settings.prot=e.target.checked; touch(); if(run.fix) run.fix=normFix(run.fix); saveRun(); paint(); });
   document.getElementById('liveSwitch').addEventListener('change',e=>{ store.settings.live=e.target.checked; touch(); paintLive(); });
+  document.getElementById('warnMissSwitch').addEventListener('change',e=>{ store.settings.warnMiss=e.target.checked; touch(); });
   paint();
   new MutationObserver(()=>{ const w=document.getElementById('drugBoxes'); if(w) w.querySelectorAll('.db-box').forEach(b=>b.classList.toggle('good',ans.classList.contains('good'))); }).observe(ans,{attributes:true,attributeFilter:['class']});
   setTimeout(()=>{ if(drugBoxesOn()&&focusDrugBoxes()) return; try{ ans.focus({preventScroll:true}); const n=ans.value.length; ans.setSelectionRange(n,n); }catch(e){} },30);
@@ -2115,7 +2117,7 @@ function paint(){
   const pe=protEl(); document.getElementById('protRow').hidden=!needProt(item);
   document.getElementById('protSwitchRow').hidden=!item.p; document.getElementById('protSwitch').checked=store.settings.prot!==false;
   document.getElementById('liveSwitch').checked=!!store.settings.live;
-  document.getElementById('liveCost').textContent=store.settings.warnMiss!==false?'a warning counts as a miss':'warnings don\u2019t count';
+  document.getElementById('warnMissSwitch').checked=store.settings.warnMiss!==false;
   // tools: mnemonic (adverse effects) and next word (mechanism, indications, contraindications, notes)
   const answering=run.phase==='answer';
   const mnBtn=document.getElementById('mnBtn'); mnBtn.hidden=!item.mn||!answering||p.redo; mnBtn.innerHTML=p.mn?'Hide mnemonic':`Show mnemonic${p.hinted?'':' <span class="cost">counts as a miss</span>'}`;
