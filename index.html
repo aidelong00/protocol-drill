@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Protocol Drill</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Protocol Drill">
+<meta name="theme-color" content="#E3E6EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0E1116" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Layout: one 640px column. Every drill screen is a pocket protocol card, punched for a coil. */
+  --bg:#E3E6EA;
+  --card:#FBFBF9;
+  --ink:#14181E;
+  --muted:#596270;
+  --rule:#CBD1D8;
+  --accent:#B91C1C;
+  --ok:#17784F;
+  --ok-bg:#DFF1E8;
+  --hl:#FFE36B;
+  --hl-ink:#14181E;
+  --font-display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1116; --card:#181D25; --ink:#E9EDF2; --muted:#98A2AF; --rule:#2C333E;
+    --accent:#F25C5C; --ok:#4BC48C; --ok-bg:#15392A; --hl:#F2D04B; --hl-ink:#14181E;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1116; --card:#181D25; --ink:#E9EDF2; --muted:#98A2AF; --rule:#2C333E;
+  --accent:#F25C5C; --ok:#4BC48C; --ok-bg:#15392A; --hl:#F2D04B; --hl-ink:#14181E;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.5 var(--font-body);-webkit-text-size-adjust:100%}
+button{font-family:inherit}
+.wrap{max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:20px;
+  padding:max(20px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+:focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 70%,transparent);outline-offset:2px}
+
+/* Home */
+.hero{display:flex;flex-direction:column;gap:10px;padding-top:4px}
+.tag{align-self:flex-start;font:700 12px/1 var(--font-display);font-stretch:110%;letter-spacing:.14em;text-transform:uppercase;color:#fff;background:var(--accent);padding:6px 8px 5px;border-radius:4px}
+.title{font-family:var(--font-display);font-stretch:125%;font-weight:900;font-size:clamp(42px,12vw,68px);line-height:.9;letter-spacing:-.01em;margin:0;text-transform:uppercase;text-wrap:balance}
+.lede{color:var(--muted);max-width:50ch;margin:0}
+.settings{display:flex;flex-direction:column;gap:10px}
+.hero-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.about-btn{border:1.5px solid var(--ink);background:transparent;color:var(--ink);font:700 14px/1 var(--font-body);padding:8px 14px;border-radius:999px;cursor:pointer}
+.acct{background:var(--card);border:1px solid var(--rule);border-radius:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px}
+.acct-txt{font-size:14px;color:var(--muted);min-width:0;overflow-wrap:anywhere}
+.acct-txt b{color:var(--ink);font-weight:700}
+.acct-btn{flex:none;border:1.5px solid var(--ink);background:transparent;color:var(--ink);font:700 14px/1 var(--font-body);padding:9px 14px;border-radius:999px;cursor:pointer}
+.acct-btn.primary{background:var(--ink);color:var(--card)}
+.acct-err{margin:-6px 2px 0;font-size:13px;color:var(--accent)}
+.set-card{background:var(--card);border:1px solid var(--rule);border-radius:14px;display:flex;flex-direction:column}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 16px;cursor:pointer}
+.set-row+.set-row{border-top:1px solid var(--rule)}
+.set-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.set-label{font-weight:700;font-size:16px;color:var(--ink)}
+.set-cap{font-size:13px;color:var(--muted)}
+.about{display:flex;flex-direction:column;gap:12px;max-width:62ch}
+.about p{margin:0;line-height:1.5}
+.about .sect{margin-top:10px}
+.seg{display:inline-flex;align-self:flex-start;border:1.5px solid var(--ink);border-radius:999px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;color:var(--ink);font:700 14px/1 var(--font-body);padding:9px 14px;border-radius:999px;cursor:pointer}
+.seg button[aria-checked="true"]{background:var(--ink);color:var(--card)}
+.note{font-size:14px;color:var(--muted);margin:0;max-width:56ch}
+.check{display:inline-flex;align-items:center;gap:8px;font-size:15px;cursor:pointer;align-self:flex-start}
+.check input{width:18px;height:18px;accent-color:var(--ink)}
+.sect{font:700 12px/1 var(--font-display);font-stretch:112%;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+.list{background:var(--card);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:stretch;border-top:1px solid var(--rule)}
+.row:first-child{border-top:0}
+.row-main{flex:1;min-width:0;text-align:left;background:none;border:0;padding:15px 16px;cursor:pointer;color:inherit;display:flex;flex-direction:column;gap:7px;font:inherit}
+.row-main:hover,.row-side:hover{background:color-mix(in srgb,var(--ink) 5%,transparent)}
+.row-title{font-family:var(--font-display);font-stretch:106%;font-weight:750;font-size:19px;line-height:1.2}
+.row-meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:14px;color:var(--muted)}
+.row-side{flex:none;background:none;border:0;border-left:1px solid var(--rule);padding:0 16px;color:var(--ink);font:700 14px var(--font-body);cursor:pointer}
+.empty{padding:16px;color:var(--muted);font-size:15px;margin:0}
+.chip{display:inline-flex;align-items:center;gap:4px;font:700 12px/1 var(--font-body);padding:5px 8px;border-radius:999px;border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.row-main{position:relative}
+.reset-timer{position:absolute;top:8px;right:10px;font:700 12px/1 var(--font-body);color:var(--accent);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.pbar-wrap{display:flex;flex-direction:column;gap:6px;max-width:420px;margin:2px 0 4px}
+.pbar-top{font:800 13px/1 var(--font-display);font-stretch:112%;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pbar-top.ok{color:var(--ok)} .pbar-top.gold{color:#A87A12}
+.pbar{height:14px;border-radius:999px;background:var(--rule);overflow:hidden}
+.pbar i{display:block;height:100%;border-radius:inherit;background:var(--ink);transition:width .6s ease}
+.pbar.ok i{background:var(--ok)} .pbar.gold i{background:linear-gradient(110deg,#E8C15A,#FFF0B8 45%,#E3B23C)}
+.pbar-label{font-size:14px;font-weight:700;color:var(--ink)}
+.pbar-warn{font-size:13px;color:var(--accent);margin:0}
+.chip.prog{color:var(--ink);border-color:var(--ink)}
+.chip.miss{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
+.foot{font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--rule);padding-top:14px}
+.foot p{margin:0}
+
+/* Drill */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:40px}
+.back{background:none;border:0;color:var(--ink);font:700 15px var(--font-body);padding:8px 0;cursor:pointer}
+.tb-right{display:flex;gap:14px;align-items:center;font-size:14px;color:var(--muted)}
+.tb-btn{background:none;border:1px solid var(--rule);color:var(--muted);font:700 13px var(--font-body);padding:6px 10px;border-radius:8px;cursor:pointer}
+.tb-btn.armed{border-color:var(--accent);color:var(--accent)}
+.progress{display:flex;flex-direction:column;gap:6px}
+.bar{height:6px;border-radius:999px;background:var(--rule);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok);transition:width .3s ease}
+.bar-txt{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;justify-content:space-between;gap:10px}
+.bar-txt b{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 12px 26px -20px rgba(0,0,0,.45)}
+.holes{height:20px;background:radial-gradient(circle,var(--bg) 0 3.6px,transparent 4.2px) center/22px 20px repeat-x}
+.card-body{padding:16px 18px 18px;display:flex;flex-direction:column;gap:8px}
+.ask{font:700 12px/1 var(--font-display);font-stretch:112%;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.drug{font-family:var(--font-display);font-stretch:112%;font-weight:850;font-size:clamp(26px,6.8vw,40px);line-height:1.02;text-transform:uppercase;margin:0;text-wrap:balance;overflow-wrap:break-word}
+.drug.long{font-size:clamp(22px,5.6vw,30px);font-stretch:100%}
+.drug.custom{text-transform:none;font-stretch:100%}
+.sub{font:600 15px var(--font-display);font-stretch:100%;color:var(--muted)}
+.ctx{font-size:18px;font-weight:700;line-height:1.35}
+.card-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;min-height:22px}
+.lbl{font-size:12px;color:var(--muted)}
+textarea,input[type="text"]{width:100%;font:18px/1.45 var(--font-body);color:var(--ink);background:var(--card);border:2px solid var(--rule);border-radius:12px;padding:12px 14px}
+textarea{min-height:130px;resize:vertical}
+textarea:focus,input[type="text"]:focus{outline:none;border-color:var(--ink)}
+textarea.good{border-color:var(--ok)}
+textarea.shake{animation:shake .32s}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{font:700 16px/1 var(--font-body);border-radius:10px;padding:14px 18px;cursor:pointer;border:1.5px solid var(--ink);background:transparent;color:var(--ink)}
+.btn.primary{background:var(--ink);color:var(--card);flex:1}
+.btn.danger{border-color:var(--accent);color:var(--accent)}
+.hint{font-size:13px;color:var(--muted);margin:-6px 0 0}
+.fb{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;border:1px solid var(--rule);background:var(--card)}
+.fb.ok{border-left:5px solid var(--ok)}
+.fb.miss{border-left:5px solid var(--accent)}
+.fb-head{font:800 14px/1.3 var(--font-display);font-stretch:110%;text-transform:uppercase;letter-spacing:.06em}
+.fb.ok .fb-head{color:var(--ok)}
+.fb.miss .fb-head{color:var(--accent)}
+.fb-ans{margin:0;font-size:17px;white-space:pre-wrap}
+mark.k{background:none;color:inherit;font-weight:700;border-bottom:2px solid var(--muted);padding:0 1px}
+mark.k.ok{border-color:var(--ok);color:var(--ok)}
+mark.k.miss,.w.miss{background:var(--hl);color:var(--hl-ink);border-bottom:2px solid transparent;border-radius:3px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.fb-small{font-size:14px;color:var(--muted);margin:0}
+.w.miss.xtra{font-weight:700;padding:0 3px}
+b.xb{font-weight:800}
+.fb-still{margin:2px 0 0;font-size:14px;font-weight:600;color:var(--accent)}
+.w.ord{background:color-mix(in srgb,var(--accent) 14%,transparent);border-bottom:2px dotted var(--accent);border-radius:3px}
+.fb-order{font-size:15px;margin:0;color:var(--ink)}
+.fix{border:1.5px dashed var(--ink);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.fix-label{font:700 12px/1 var(--font-display);font-stretch:112%;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.fix-text{margin:0;font-size:17px;white-space:pre-wrap}
+.card-hint{font-size:14px;color:var(--muted);font-style:italic}
+.prot-row{display:flex;align-items:center;gap:10px}
+.switch-row{display:inline-flex;align-items:center;gap:10px;font-size:15px;color:var(--muted);cursor:pointer;align-self:flex-start}
+input[role="switch"]{appearance:none;-webkit-appearance:none;width:42px;height:24px;border-radius:999px;background:var(--rule);position:relative;cursor:pointer;flex:none;margin:0;transition:background .15s}
+input[role="switch"]::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s}
+input[role="switch"]:checked{background:var(--ok)}
+input[role="switch"]:checked::after{transform:translateX(18px)}
+.prot-row label{font:750 16px var(--font-display);font-stretch:106%;white-space:nowrap}
+.prot-row input{flex:1;min-width:0;font-size:17px;padding:10px 12px}
+textarea[readonly],input[readonly]{opacity:.5}
+input.good{border-color:var(--ok)}
+input.shake{animation:shake .32s}
+.fb-prot{margin:0;font-size:16px}
+.nw{white-space:nowrap}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.btn.small{font-size:14px;padding:9px 12px;border-width:1.5px}
+.btn:disabled{opacity:.45;cursor:default}
+.actions #nwBtn{flex:1 1 100%}
+.cost{font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
+.mn-panel{border:1px solid var(--rule);background:var(--card);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.seg.small button{font-size:13px;padding:7px 11px}
+.mn-letters{margin:0;font:800 26px/1.2 var(--font-display);font-stretch:112%;letter-spacing:.12em;word-spacing:.15em}
+.mn-text{margin:0;font-size:18px;font-weight:700}
+.nw-hint{margin:0;font-size:15px;color:var(--ink);background:color-mix(in srgb,var(--hl) 35%,transparent);border-radius:8px;padding:8px 12px}
+.live-warn{margin:-8px 0 0;font-size:14px;font-weight:700;color:#B26A00}
+textarea.warnb{border-color:#E09A2C;box-shadow:0 0 0 3px color-mix(in srgb,#E09A2C 22%,transparent)}
+.switches{display:flex;flex-direction:column;gap:10px}
+.search{font-size:17px}
+.fb.redo{border-left:5px solid #E09A2C}
+.fb.redo .fb-head{color:#B26A00}
+.row-icon{flex-direction:row;align-items:center;gap:12px}
+.row-text{display:flex;flex-direction:column;gap:7px;min-width:0}
+.dc-icon{position:relative;flex:none;width:26px;height:34px;border-radius:5px;border:1.5px solid var(--rule);background:var(--card);overflow:hidden}
+.dc-icon::after{content:"";position:absolute;left:0;right:0;top:2px;height:5px;background:radial-gradient(circle,var(--bg) 0 1.6px,transparent 2px) center/7px 5px repeat-x}
+.dc-icon.gold{border-color:#A87A12;background:linear-gradient(110deg,#A87A12 0%,#E8C15A 22%,#FFF4C8 38%,#E3B23C 52%,#A87A12 72%,#E8C15A 88%,#FFF4C8 100%);background-size:260% 100%;animation:shimmer 2.6s linear infinite;box-shadow:0 2px 10px -3px rgba(168,122,18,.7)}
+@keyframes shimmer{from{background-position:120% 0}to{background-position:-140% 0}}
+.chip.gold{background:linear-gradient(110deg,#E8C15A,#FFF0B8 45%,#E3B23C);color:#5A3E00;border-color:transparent}
+.stamp.gold{color:#A87A12;border-color:#A87A12}
+.fb-note{font-size:14px;color:var(--muted);margin:0;border-top:1px dashed var(--rule);padding-top:8px}
+.link{background:none;border:0;padding:2px 0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;font:14px var(--font-body);cursor:pointer;align-self:flex-start;text-align:left}
+
+/* Results */
+.stamp{align-self:flex-start;margin:8px 0 4px 6px;font:900 34px/1 var(--font-display);font-stretch:125%;text-transform:uppercase;color:var(--ok);border:4px solid var(--ok);padding:8px 14px 6px;border-radius:8px;transform:rotate(-5deg);animation:stamp .45s cubic-bezier(.2,1.5,.4,1) both}
+@keyframes stamp{from{transform:rotate(-5deg) scale(1.9);opacity:0}to{transform:rotate(-5deg) scale(1);opacity:1}}
+.h-res{font-family:var(--font-display);font-stretch:118%;font-weight:850;font-size:clamp(30px,8vw,44px);line-height:1;margin:0;text-transform:uppercase;text-wrap:balance}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:0}
+.stats div{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:12px}
+.stats dt{font:700 11px/1.2 var(--font-display);font-stretch:112%;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.stats dd{margin:6px 0 0;font:850 28px/1 var(--font-display);font-variant-numeric:tabular-nums}
+.mlist{list-style:none;margin:0;padding:0}
+.mlist li{padding:12px 16px;border-top:1px solid var(--rule);display:flex;flex-direction:column;gap:2px}
+.mlist li:first-child{border-top:0}
+.mlist b{font-family:var(--font-display);font-stretch:106%}
+.mlist span{font-size:14px;color:var(--muted)}
+
+/* Study + editor */
+.study li{gap:6px}
+.study .q{font-family:var(--font-display);font-stretch:106%;font-weight:750;font-size:17px}
+.study .c{font-size:14px;color:var(--muted)}
+.study .a{font-size:16px;white-space:pre-wrap}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-weight:700;font-size:15px}
+.field textarea{min-height:240px;font-size:16px}
+.err{color:var(--accent);font-weight:700;font-size:15px;margin:0}
+code{font-size:.92em;background:color-mix(in srgb,var(--ink) 7%,transparent);padding:1px 5px;border-radius:4px}
+
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script src="config.js"></script>
+<script src="firebase.js"></script>
+<script>
+(function(){
+'use strict';
+
+/*CORE-START*/
+const SYN = {
+  minutes:'min',minute:'min',mins:'min',secs:'sec',seconds:'sec',
+  milligrams:'mg',milligram:'mg',mgs:'mg',micrograms:'mcg',microgram:'mcg',ug:'mcg',mcgs:'mcg',
+  grams:'g',gram:'g',gm:'g',gms:'g',milliliters:'ml',milliliter:'ml',millilitres:'ml',millilitre:'ml',mls:'ml',cc:'ml',ccs:'ml',
+  kilograms:'kg',kilogram:'kg',kgs:'kg',milliequivalents:'meq',milliequivalent:'meq',maximum:'max',
+  intravenous:'iv',intravenously:'iv',intraosseous:'io',intramuscular:'im',intramuscularly:'im',
+  intranasal:'nasalroute',intranasally:'nasalroute',sublingual:'sl',sublingually:'sl',
+  oral:'po',orally:'po',every:'q',iii:'3',ach:'acetylcholine',
+  // Approved abbreviations (single words); each side maps to the same short form.
+  patient:'pt',patients:'pt',pts:'pt',
+  overdose:'od',overdoses:'od',hypertension:'htn',gastrointestinal:'gi',atrioventricular:'av',sinoatrial:'sa',
+  ekg:'ecg',nitroglycerin:'ntg',epinephrine:'epi',magnesium:'mag',wolffparkinsonwhite:'wpw',
+  medication:'med',medications:'med',meds:'med',pediatric:'peds',pediatrics:'peds',
+  with:'w',without:'wo',hours:'hour',hrs:'hour',years:'yr',year:'yr',yrs:'yr',
+  nebulizer:'neb',nebulizers:'neb',nebuliser:'neb',defibrillation:'defib',defibrillations:'defib',
+  pacemaker:'pacer',continuous:'cont',administration:'admin'
+};
+// Approved abbreviations (phrases): the long form and the short form count as the same.
+const ABBR=[
+  [['acute','coronary','syndrome'],'acs'],
+  [['nonsteroidal','antiinflammatory','drug'],'nsaid'],[['non','steroidal','anti','inflammatory','drug'],'nsaid'],
+  [['nonsteroidal','anti','inflammatory','drug'],'nsaid'],[['non','steroidal','antiinflammatory','drug'],'nsaid'],
+  [['supraventricular','tachycardia'],'svt'],[['ventricular','tachycardia'],'vt'],[['ventricular','fibrillation'],'vf'],
+  [['pulseless','electrical','activity'],'pea'],[['congestive','heart','failure'],'chf'],[['myocardial','infarction'],'mi'],
+  [['deep','vein','thrombosis'],'dvt'],[['pulmonary','embolism'],'pe'],[['altered','mental','status'],'ams'],
+  [['tricyclic','antidepressant'],'tca'],[['wolff','parkinson','white'],'wpw'],[['erectile','dysfunction'],'ed'],
+  [['central','nervous','system'],'cns'],[['heart','rate'],'hrate'],[['blood','pressure'],'bp'],[['systolic','bp'],'sbp'],
+  [['blood','sugar'],'bs'],[['glasgow','coma','scale'],'gcs'],[['normal','saline'],'ns'],[['tranexamic','acid'],'txa'],
+  [['calcium','chloride'],'cacl2'],[['cacl','2'],'cacl2'],[['sodium','bicarbonate'],'nahco3'],[['sodium','bicarb'],'nahco3'],[['nahco','3'],'nahco3'],
+  [['dextrose','at','10'],'d10'],[['dextrose','10'],'d10'],[['d','10'],'d10'],
+  [['w','o'],'wo'],[['y','o'],'yoa'],[['yr','of','age'],'yoa'],[['yr','age'],'yoa'],
+  [['1','st'],'first'],[['2','nd'],'second'],[['3','rd'],'third'],
+  [['base','hospital','physician','order'],'bhpo'],[['base','hospital','order'],'bho'],
+  [['aspirin'],'asa'],[['5','ht','3'],'5ht3'],
+  // "not given" and "withheld" mean the same: "may not be given" = "may be withheld"
+  [['not','be','given'],'withheld'],[['not','given'],'withheld'],[['be','withheld'],'withheld']
+];
+// "HR" can mean heart rate or hours; it counts for either, but those two never count for each other.
+const EQUIV=new Set(['hr|hrate','hrate|hr','hr|hour','hour|hr','within|in','in|within']);
+// Short forms are matched exactly, never as typos of other words ("rate" is not "heart rate").
+const CANON=new Set(ABBR.map(a=>a[1]).filter(x=>!['first','second','third','withheld'].includes(x)).concat(['hour','yr','wo']));
+// A term spelled out right before its abbreviation has to be spelled out right too:
+// "supraventricular bradycardia (SVT)" is wrong even though "SVT" is right.
+const LONGS=new Map(); ABBR.forEach(([l,sh])=>{ if(!LONGS.has(sh)) LONGS.set(sh,[]); LONGS.get(sh).push(l); });
+function badExpansions(R,U,pairs,used){
+  const out=[];
+  for(const [k,j] of pairs){
+    const longs=LONGS.get(R[k]); if(!longs||!CANON.has(R[k])) continue;
+    if(j>0&&U[j-1]===R[k]) continue;
+    const max=Math.max(...longs.map(l=>l.length)); const run=[];
+    for(let q=j-1;q>=0&&run.length<max&&!used.has(q);q--) run.unshift(q);
+    if(!run.length) continue;
+    const words=run.map(q=>U[q]);
+    if(!longs.some(l=>words.some(t=>l.some(x=>!/\d/.test(x)&&x.length>=4&&tokEq(x,t))))) continue;
+    if(longs.some(l=>l.length===words.length&&l.every((x,i)=>tokEq(x,words[i])))) continue;
+    out.push({k,j,run});
+  }
+  return out;
+}
+// Only abbreviations the card itself uses (as either form) are applied to what you type,
+// including steps toward one ("systolic blood pressure" -> "systolic BP" -> SBP) and words inside a
+// hyphenated term ("3rd" in "third-degree").
+const APPLY=new WeakMap();
+function applicable(refSet){
+  if(APPLY.has(refSet)) return APPLY.get(refSet);
+  const ok=new Set(); const shorts=new Set(ABBR.map(a=>a[1]));
+  const inRef=sh=>refSet.has(sh)||[...refSet].some(r=>EQUIV.has(r+'|'+sh)||(sh.length>=5&&r.includes(sh)));
+  let changed=true;
+  while(changed){
+    changed=false;
+    for(const [long,short] of ABBR){
+      if(ok.has(short)||!(inRef(short))) continue;
+      ok.add(short); changed=true;
+      long.forEach(t=>{ if(shorts.has(t)&&!ok.has(t)){ ok.add(t); } });
+    }
+    for(const [long,short] of ABBR){ if(ok.has(short)) long.forEach(t=>{ if(shorts.has(t)&&!ok.has(t)){ ok.add(t); changed=true; } }); }
+  }
+  APPLY.set(refSet,ok); return ok;
+}
+function canonUser(u,refSet){
+  const ok=refSet?applicable(refSet):null;
+  for(const [long,short] of ABBR){
+    if(ok&&!ok.has(short)) continue;
+    const out=[];
+    for(let i=0;i<u.length;i++){
+      if(long.every((t,j)=>u[i+j]!==undefined&&(/\d/.test(t)?t===u[i+j]:tokEq(t,u[i+j])))){ out.push(short); i+=long.length-1; }
+      else out.push(u[i]);
+    }
+    u=out;
+  }
+  return u;
+}
+function canonRef(toks){
+  for(const [long,short] of ABBR){
+    const out=[];
+    for(let i=0;i<toks.length;i++){
+      if(long.every((t,j)=>toks[i+j]&&toks[i+j].t===t)){
+        const seg=toks.slice(i,i+long.length);
+        out.push({t:short,wi:seg[0].wi,wis:[...new Set(seg.flatMap(x=>x.wis||[x.wi]))],sl:seg[0].sl});
+        i+=long.length-1;
+      } else out.push(toks[i]);
+    }
+    toks=out;
+  }
+  return toks;
+}
+// Words you may leave out. "and", "or", "not", numbers and comparison signs are never optional.
+const LEEWAY = {
+  keys: new Set('a an the of to in into on at by for from with w via as that which who whom whose this these those it its is are was were be been being has have had also thus well such both there their so but then than while whereas eg ie ~'.split(' ')),
+  exact: new Set('a an the but ~'.split(' '))
+};
+const CRIT = t => t==='and'||t==='or'||t==='not'||t==='no'||t==='gte'||t==='gt'||t==='lte'||t==='lt'||/^\d/.test(t);
+const CRIT_LABEL = {gte:'≥',gt:'>',lte:'≤',lt:'<'};
+
+function norm(str){
+  // The route IN (intranasal) is not the word "in": uppercase IN, "in" slashed with another route,
+  // or "in" right after a dose unit that ends the phrase ("50 mcg in q15 min", not "in 100 mL" or "in a 24-hour period").
+  let s = String(str).replace(/\bIN\b/g,' intranasal ').toLowerCase();
+  s = s.replace(/\b(iv|im|io|po|sl|odt)\s*\/\s*in\b/g,'$1/intranasal').replace(/\bin(?=\s*\/\s*(?:iv|im|io|po|sl|odt|intranasal)\b)/g,'intranasal');
+  s = s.replace(/\b(mcg|mg|kg|ml|gm|g)\s+in\b(?=\s*(?:$|[,.;:()]|q\s*\d|per\b|x\s*\d|mr\b|bh))/g,'$1 intranasal');
+  s = s.replace(/&/g,' and ').replace(/β/g,' beta ').replace(/[µμ]g/g,' mcg ').replace(/[µμ]/g,' mu ');
+  s = s.replace(/≥|>=|=>/g,' gte ').replace(/≤|<=|=</g,' lte ').replace(/>/g,' gt ').replace(/</g,' lt ');
+  s = s.replace(/\be\.\s?g\.?/g,' eg ').replace(/\bi\.\s?e\.?/g,' ie ');
+  s = s.replace(/\bmay\s+repeat\b/g,' mr ');
+  s = s.replace(/(\d),(?=\d{3}(?!\d))/g,'$1');
+  s = s.replace(/(^|[^\d])\.(\d)/g,(m,a,b)=>a+'0.'+b);
+  s = s.replace(/(\d)\s*(?:-|–|—|\bto\b)\s*(?=\d)/g,'$1 \u0002 ');
+  s = s.replace(/([a-z])[-‐–](?=[a-z])/g,'$1');
+  s = s.replace(/(\d)\.(\d)/g,'$1\u0001$2');
+  s = s.replace(/[^a-z0-9\u0001\u0002]+/g,' ').replace(/\u0001/g,'.');
+  s = s.replace(/([a-z])(\d)/g,'$1 $2').replace(/(\d)([a-z])/g,'$1 $2');
+  const out = [];
+  for (let t of s.split(/\s+/)){
+    if(!t) continue;
+    if(t==='\u0002'){ out.push('~'); continue; }
+    if(Object.prototype.hasOwnProperty.call(SYN,t)) t = SYN[t];
+    if(t) out.push(t);
+  }
+  return out;
+}
+
+function osa(a,b){
+  const m=a.length,n=b.length; const d=[];
+  for(let i=0;i<=m;i++){d[i]=new Array(n+1);d[i][0]=i;}
+  for(let j=0;j<=n;j++) d[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      const c=a[i-1]===b[j-1]?0:1;
+      let v=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+      if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1]) v=Math.min(v,d[i-2][j-2]+1);
+      d[i][j]=v;
+    }
+  }
+  return d[m][n];
+}
+// Words that look alike but mean the opposite: never let typo tolerance bridge them.
+const OPPOSITE = [[/^hyper/,/^hypo/],[/^brady/,/^tachy/],[/^incr/,/^decr/],[/^inter/,/^intra/],[/^agon/,/^antag/],[/^pre/,/^post/],[/^sym/,/^parasym/]];
+function opposite(a,b){ return OPPOSITE.some(([x,y])=>(x.test(a)&&y.test(b))||(y.test(a)&&x.test(b))); }
+function tokEq(exp,got){
+  if(exp===got) return true;
+  if(EQUIV.has(exp+'|'+got)) return true;
+  if(CANON.has(exp)||CANON.has(got)) return false;
+  if(/\d/.test(exp)||/\d/.test(got)) return false;
+  if(CRIT(exp)||CRIT(got)) return false;
+  if(opposite(exp,got)) return false;
+  const L=exp.length; const tol=L<=3?0:L<=6?1:2;
+  if(L===3&&(got===exp+'s'||exp===got+'s')) return true;   // plural on a short word: ion/ions
+  if(Math.abs(L-got.length)>tol) return false;
+  return osa(exp,got)<=tol;
+}
+
+/* ---- Bracket grading (custom decks with [key words]) ---- */
+function joinedEq(k,u){
+  if(k===u) return true;
+  if(/\d/.test(u)||opposite(k,u)) return false;
+  return k.length>=8&&Math.abs(k.length-u.length)<=1&&osa(k,u)<=1;
+}
+const isNum=t=>t!=null&&/^\d/.test(t);
+const RANGE='~';
+function phraseFound(key,user){
+  const n=key.length; if(!n) return false;
+  const hasDigit=key.some(t=>/\d/.test(t)); const joined=key.join('');
+  for(let i=0;i<user.length;i++){
+    if(i+n<=user.length){
+      let ok=true;
+      for(let j=0;j<n;j++){ if(!tokEq(key[j],user[i+j])){ok=false;break;} }
+      if(ok&&isNum(key[0])&&user[i-1]===RANGE) ok=false;
+      if(ok&&isNum(key[n-1])&&user[i+n]===RANGE) ok=false;
+      if(ok) return true;
+    }
+    if(!hasDigit){
+      for(let L=Math.max(1,n-1);L<=n+1&&i+L<=user.length;L++){
+        if(L===n) continue;
+        if(joinedEq(joined,user.slice(i,i+L).join(''))) return true;
+      }
+    }
+  }
+  return false;
+}
+const PCACHE = new Map();
+function parseAnswer(a){
+  if(PCACHE.has(a)) return PCACHE.get(a);
+  const segs=[]; const re=/\[([^\]]+)\]/g; let last=0, m;
+  while((m=re.exec(a))){
+    if(m.index>last) segs.push({k:false,s:a.slice(last,m.index)});
+    const raw=m[1].split('|').map(x=>x.trim()).filter(Boolean);
+    segs.push({k:true,disp:raw[0]||'',alts:raw.map(norm).filter(t=>t.length)});
+    last=re.lastIndex;
+  }
+  if(last<a.length) segs.push({k:false,s:a.slice(last)});
+  PCACHE.set(a,segs); return segs;
+}
+function displayText(a){ return parseAnswer(a).map(s=>s.k?s.disp:s.s).join(''); }
+function gradeKeys(segs,text){
+  const user=norm(text); const missing=[]; let pass=true;
+  const res=segs.map(s=>{
+    if(!s.k) return {k:false,text:s.s};
+    const ok=s.alts.some(alt=>phraseFound(alt,user));
+    if(!ok){pass=false;missing.push(s.disp);}
+    return {k:true,ok,disp:s.disp};
+  });
+  return {pass,res,missing};
+}
+
+/* ---- Full-text grading ---- */
+const RCACHE = new Map();
+// phr: each comma/semicolon phrase is its own unit (classifications); a "Drug:" label starts a group its phrases stay in.
+function refOf(answer,phr){
+  const key=phr?'\u0001'+answer:answer;
+  if(RCACHE.has(key)) return RCACHE.get(key);
+  const parts=displayText(answer).split(/(\s+)/); let toks=[];
+  parts.forEach((w,wi)=>{
+    if(!w.trim()) return;
+    w.split('/').forEach((piece,k)=>{
+      const pt=norm(piece);
+      pt.forEach((t,ti)=>toks.push({t,wi,sl:k>0&&ti===0&&toks.length>0&&toks[toks.length-1].wi===wi}));
+    });
+  });
+  toks=canonRef(toks);
+  const slash=new Set(); toks.forEach((x,i)=>{ if(x.sl&&i>0) slash.add(i-1); });
+  toks.forEach((x,i)=>{ if(i>0&&x.t===toks[i-1].t&&/^\(/.test(parts[x.wi])) x.opt=true; });
+  const set=new Set(toks.map(x=>x.t)); const pairs=[];
+  for(let i=0;i+1<toks.length;i++){ const j=toks[i].t+toks[i+1].t; if(!/\d/.test(j)) pairs.push([j,toks[i].t,toks[i+1].t]); }
+  // Clause index per part: a clause ends at , ; : . or a line break.
+  const clause=new Array(parts.length).fill(0); let c=0;
+  parts.forEach((w,pi)=>{
+    if(!w.trim()){ if(/\n/.test(w)) c++; clause[pi]=c; return; }
+    clause[pi]=c; if(/[,;:.][\"'\u201d)\]]*$/.test(w)) c++;
+  });
+  const line=new Array(parts.length).fill(0); let ln=0;
+  let grp=null, label=null;
+  if(phr){
+    grp=[]; label=new Map(); let b=0;
+    parts.forEach((w,pi)=>{
+      if(!w.trim()){ if(/\n/.test(w)){ ln++; b++; } line[pi]=ln; return; }
+      line[pi]=ln; grp[ln]=b;
+      if(/:["'\u201d)\]]*$/.test(w)){ label.set(b,ln); ln++; }
+      else if(/[,;]["'\u201d)\]]*$/.test(w)) ln++;
+    });
+  } else parts.forEach((w,pi)=>{ if(!w.trim()&&/\n/.test(w)) ln++; line[pi]=ln; });
+  const r={parts,toks,set,pairs,clause,slash,line,grp,label}; RCACHE.set(key,r); return r;
+}
+function fuzzyIn(set,t){ if(set.has(t)) return true; for(const r of set) if(tokEq(r,t)) return true; return false; }
+// Spacing differences: "non cardiac" for "non-cardiac", "smoothmuscle" for "smooth muscle".
+// Only when the joined (or split) form matches a protocol word that neither piece matches alone, within one typo.
+const closeJoin=(r,j)=>r===j||(r.length>=8&&Math.abs(r.length-j.length)<=1&&!opposite(r,j)&&osa(r,j)<=1);
+function adapt(user,ref){
+  const out=[];
+  for(let i=0;i<user.length;i++){
+    const a=user[i], b=user[i+1];
+    if(b!==undefined&&!/\d/.test(a+b)&&!CRIT(a)&&!CRIT(b)){
+      const j=a+b; let hit=false;
+      for(const r of ref.set){ if(closeJoin(r,j)&&!tokEq(r,a)&&!tokEq(r,b)){ hit=true; break; } }
+      if(hit){ out.push(j); i++; continue; }
+    }
+    if(!/\d/.test(a)&&!ref.set.has(a)&&!fuzzyIn(ref.set,a)){
+      const p=ref.pairs.find(([j])=>closeJoin(j,a));
+      if(p){ out.push(p[1],p[2]); continue; }
+    }
+    out.push(a);
+  }
+  return out;
+}
+// Longest common subsequence: the most words that appear in the same order in both.
+function lcsPairs(refT,user){
+  const n=refT.length, m=user.length;
+  const eq=[]; for(let i=0;i<n;i++){ eq[i]=new Uint8Array(m); for(let j=0;j<m;j++) eq[i][j]=tokEq(refT[i],user[j])?1:0; }
+  const dp=[]; for(let i=0;i<=n;i++) dp[i]=new Uint16Array(m+1);
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) dp[i][j]=eq[i][j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  const pairs=[]; let i=0,j=0;
+  while(i<n&&j<m){
+    if(eq[i][j]&&dp[i][j]===dp[i+1][j+1]+1){ pairs.push([i,j]); i++; j++; }
+    else if(dp[i+1][j]>=dp[i][j+1]) i++; else j++;
+  }
+  return pairs;
+}
+// Best matching stretch of what you typed for one bullet (local alignment): matches score, gaps cost.
+function localAlign(a,b,free){
+  const n=a.length, m=b.length; const H=[]; for(let i=0;i<=n;i++) H[i]=new Int32Array(m+1);
+  let best=0,bi=0,bj=0;
+  for(let i=1;i<=n;i++) for(let j=1;j<=m;j++){
+    const mt=free[j-1]&&tokEq(a[i-1],b[j-1]);
+    const v=Math.max(0,H[i-1][j-1]+(mt?3:-2),H[i-1][j]-1,H[i][j-1]-1);
+    H[i][j]=v; if(v>best){ best=v; bi=i; bj=j; }
+  }
+  const pairs=[]; let i=bi, j=bj;
+  while(i>0&&j>0&&H[i][j]>0){
+    const mt=free[j-1]&&tokEq(a[i-1],b[j-1]);
+    if(mt&&H[i][j]===H[i-1][j-1]+3){ pairs.push([i-1,j-1]); i--; j--; }
+    else if(H[i][j]===H[i-1][j]-1) i--;
+    else if(H[i][j]===H[i][j-1]-1) j--;
+    else if(H[i][j]===H[i-1][j-1]-2){ i--; j--; }
+    else break;
+  }
+  return {score:best,pairs:pairs.reverse()};
+}
+// Bullets in any order: each bullet claims one stretch of what you typed, best match first.
+function anyMatch(reqT,lineOfIdx,user,G){
+  const m=user.length; const byLine=new Map();
+  reqT.forEach((_,i)=>{ const L=lineOfIdx(i); if(!byLine.has(L)) byLine.set(L,[]); byLine.get(L).push(i); });
+  let remaining=[...byLine.entries()]; const claimed=new Array(m).fill(false); const pairs=[]; const spans=new Map();
+  while(remaining.length){
+    let best=null;
+    for(const [L,g] of remaining){
+      const r=localAlign(g.map(i=>reqT[i]),user,claimed.map(c=>!c));
+      if(r.score>=(g.length>=2?5:3)&&(!best||r.score>best.r.score)) best={L,g,r};
+    }
+    if(!best) break;
+    best.r.pairs.forEach(([x,y])=>pairs.push([best.g[x],y]));
+    const s=best.r.pairs[0][1], e=best.r.pairs[best.r.pairs.length-1][1];
+    for(let j=s;j<=e;j++) claimed[j]=true;
+    spans.set(best.L,[s,e]);
+    remaining=remaining.filter(([L])=>L!==best.L);
+  }
+  // A short phrase typed with its words flipped ("agent antiplatelet") doesn't align as a whole: anchor it on one word
+  // when all of its other words sit right next to it, so it's graded as a flip (passes with an order note), not as missing.
+  for(const [L,g] of remaining){
+    if(g.length<2) continue;
+    const r=localAlign(g.map(i=>reqT[i]),user,claimed.map(c=>!c)); if(!r.pairs.length) continue;
+    const s0=r.pairs[0][1], e0=r.pairs[r.pairs.length-1][1]; const got=new Set(r.pairs.map(([x])=>x)); const near=new Set();
+    const ok=g.every((ri,x)=>{ if(got.has(x)) return true;
+      for(let j=Math.max(0,s0-ORDER_SLACK);j<=Math.min(m-1,e0+ORDER_SLACK);j++) if(!claimed[j]&&!near.has(j)&&(j<s0||j>e0)&&tokEq(reqT[ri],user[j])){ near.add(j); return true; }
+      return false; });
+    if(!ok) continue;
+    r.pairs.forEach(([x,y])=>pairs.push([g[x],y])); for(let j=s0;j<=e0;j++) claimed[j]=true; spans.set(L,[s0,e0]);
+  }
+  // Grouped phrases ("Buprenorphine: ..., ..."): each phrase has to come after its own label and before the next label.
+  if(G){
+    const isLab=L=>G.label(G.grp(L))===L;
+    for(const [L,sp] of [...spans]){
+      const LL=G.label(G.grp(L)); if(LL===undefined||LL===L) continue;
+      const ls=spans.get(LL); let ok=!!ls&&sp[0]>ls[1];
+      if(ok){ const nxt=Math.min(Infinity,...[...spans].filter(([L2,s2])=>L2!==LL&&isLab(L2)&&s2[0]>ls[1]).map(([,s2])=>s2[0])); ok=sp[1]<nxt; }
+      if(!ok){ spans.delete(L); for(let q=pairs.length-1;q>=0;q--) if(lineOfIdx(pairs[q][0])===L) pairs.splice(q,1); }
+    }
+  }
+  pairs.sort((x,y)=>x[1]-y[1]);
+  return {pairs,spans};
+}
+const grpOf=ref=>ref.grp?{grp:L=>ref.grp[L],label:g=>ref.label.get(g)}:null;
+// Mechanisms: "effect(s)" and "activity" are interchangeable.
+const EFF=['activity','activities','effect','effects'];
+const effRef=(t,o)=>o&&o.eff&&EFF.includes(t)?'activity':t;
+// Phrases a card accepts in another order, e.g. "analgesic and antipyretic" for "antipyretic and analgesic".
+function applyAlt(u,alt){
+  for(const [from,to] of alt){
+    const f=norm(from), t=norm(to); const out=[];
+    for(let i=0;i<u.length;i++){
+      if(f.every((x,j)=>u[i+j]!==undefined&&tokEq(x,u[i+j]))){ out.push(...t); i+=f.length-1; } else out.push(u[i]);
+    }
+    u=out;
+  }
+  return u;
+}
+// How many words at the end are the start of a term still being spelled out ("non steroidal anti ...").
+function pendingTail(U,ref,lee){
+  let pend=0; const okA=applicable(ref.set);
+  for(const [long,short] of ABBR){ if(!okA.has(short)) continue; const lw=long.filter(t=>!lee.has(t));
+    for(let L=Math.min(lw.length-1,U.length);L>pend;L--){ if(lw.slice(0,L).every((t,j)=>tokEq(t,U[U.length-L+j]))){ pend=L; break; } } }
+  return pend;
+}
+// Last card position matched when each typed word takes its earliest place (repeated words don't skip ahead).
+function lcsLast(R,U){
+  const n=R.length, m=U.length; if(!n||!m) return -1; const T=Array.from({length:n+1},()=>new Int16Array(m+1));
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) T[i][j]=tokEq(R[i],U[j])?T[i+1][j+1]+1:Math.max(T[i+1][j],T[i][j+1]);
+  let i=0,j=0,last=-1;
+  while(i<n&&j<m){ if(tokEq(R[i],U[j])&&T[i][j]===T[i+1][j+1]+1){ last=i; i++; j++; } else if(T[i][j+1]===T[i][j]) j++; else i++; }
+  return last;
+}
+// A word typed twice in a row by mistake ("and and", "heart heart rate") is ignored, unless the card itself
+// repeats it (small words you may skip left out: "calcium than calcium" may be typed "calcium calcium").
+// A doubled number, "not", "no" or comparison sign still counts.
+function dedupe(u,twice){ return u.filter((t,j)=>!(j>0&&u[j-1]===t&&!twice.has(t)&&!(CRIT(t)&&t!=='and'&&t!=='or'))); }
+function twiceIn(toks,lee){ const s=new Set(); [toks,toks.filter(t=>!lee.has(t))].forEach(a=>a.forEach((t,i)=>{ if(i&&a[i-1]===t) s.add(t); })); return s; }
+function userToks(text,ref,lee,o){
+  if(!ref.raw2) ref.raw2=twiceIn(norm(ref.parts.join('')),LEEWAY.keys);
+  let u=adapt(canonUser(dedupe(norm(text),ref.raw2),ref.set),ref);
+  if(o&&o.alt) u=applyAlt(u,o.alt);
+  // only on cards that use one of these words, and never for a different word on the card ("affects", "effector")
+  if(o&&o.eff&&EFF.some(e=>ref.set.has(e))){
+    const other=[...ref.set].filter(r=>!EFF.includes(r));
+    u=u.map(t=>EFF.includes(t)||(!other.some(r=>tokEq(r,t))&&EFF.some(e=>tokEq(e,t)))?'activity':t);
+  }
+  // "in" counts for "within": where "in" is a word you may leave out, keep it when the card says "within".
+  if(lee.has('in')&&ref.set.has('within')) u=u.map(t=>t==='in'?'within':t);
+  if(!ref.tw2) ref.tw2={};
+  const tk=lee===LEEWAY.exact?'e':'k'; if(!ref.tw2[tk]) ref.tw2[tk]=twiceIn(ref.toks.map(x=>x.t),lee);
+  return dedupe(u.filter(t=>!lee.has(t)),ref.tw2[tk]);
+}
+const ORDER_SLACK=2;   // a displaced word may sit at most this many words from where it belongs
+const ORDER_MAX=2;     // and at most this many words may be displaced
+function gradePlain(answer,text,mode,opts){
+  opts=opts||{};
+  const ref=refOf(answer,opts.phr); const lee=LEEWAY[mode];
+  const user=userToks(text,ref,lee,opts);
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const reqT=req.map(ri=>effRef(ref.toks[ri].t,opts));
+  const n=req.length, m=user.length;
+  const lineOf=i=>ref.line[ref.toks[req[i]].wi];
+  // 1) Words typed in protocol order. With opts.any, each bullet is matched on its own and bullets may come in any order.
+  let pairs=[]; const usedU=new Set();
+  let spans=null;
+  if(opts.any){ const am=anyMatch(reqT,lineOf,user,grpOf(ref)); pairs=am.pairs; spans=am.spans; pairs.forEach(p=>usedU.add(p[1])); }
+  else { pairs=lcsPairs(reqT,user); pairs.forEach(p=>usedU.add(p[1])); }
+  const at=new Map(pairs);
+  const hit=new Array(n).fill(false); pairs.forEach(([i])=>{ hit[i]=true; });
+  // 2) Remaining words typed somewhere else count as present but displaced; take the closest copy.
+  const displaced=[];
+  const AO=t=>t==='and'||t==='or';
+  const slashAO=r=>AO(ref.toks[r].t)&&((ref.slash.has(r)&&ref.toks[r+1]&&AO(ref.toks[r+1].t))||(ref.slash.has(r-1)&&AO(ref.toks[r-1].t)));
+  for(const exactPass of [true,false]){
+    for(let i=0;i<n;i++){
+      if(hit[i]) continue;
+      let up=-1, un=m;
+      const same=k=>!opts.any||lineOf(k)===lineOf(i);
+      for(let k=i-1;k>=0&&same(k);k--) if(at.has(k)){ up=at.get(k); break; }
+      for(let k=i+1;k<n&&same(k);k++) if(at.has(k)){ un=at.get(k); break; }
+      // Bullets in any order: a missing word may only be found close to its own bullet's stretch.
+      let lo=0, hi=m-1;
+      if(opts.any){ const sp=spans.get(lineOf(i)); if(!sp) continue; lo=Math.max(0,sp[0]-ORDER_SLACK); hi=Math.min(m-1,sp[1]+ORDER_SLACK); }
+      let best=-1, bd=Infinity;
+      for(let j=lo;j<=hi;j++){
+        if(usedU.has(j)) continue;
+        if(!(exactPass?reqT[i]===user[j]:tokEq(reqT[i],user[j]))) continue;
+        const d=j<up?up-j:j>un?j-un:0; if(d<bd){ bd=d; best=j; }
+      }
+      if(best>=0&&(reqT[i]==='and'||reqT[i]==='or')&&bd>ORDER_SLACK) best=-1;
+      // "and/or" is word for word: "or/and" is out of order, not a small slip.
+      if(best>=0&&slashAO(req[i])) bd=ORDER_SLACK+1;
+      if(best>=0){ usedU.add(best); hit[i]=true; displaced.push({i,dist:bd}); }
+    }
+  }
+  const far=displaced.filter(d=>d.dist>ORDER_SLACK);
+  const orderFail=far.length>0||displaced.length>ORDER_MAX;
+  // 3) Per-word status for display.
+  const words=ref.parts.map(w=>({w,req:false,ok:true,ord:false}));
+  req.forEach((ri,i)=>{ (ref.toks[ri].wis||[ref.toks[ri].wi]).forEach(wi=>{ const w=words[wi]; w.req=true; if(!hit[i]) w.ok=false; }); });
+  displaced.forEach(d=>{ const x=ref.toks[req[d.i]]; (x.wis||[x.wi]).forEach(wi=>{ words[wi].ord=true; }); });
+  if(!opts.any||opts.phr) badExpansions(reqT,user,pairs,usedU).forEach(b=>{ b.run.forEach(q=>usedU.add(q)); const x=ref.toks[req[b.k]]; (x.wis||[x.wi]).forEach(wi=>{ words[wi].ok=false; }); });
+  const clean=w=>w.replace(/^[^\w≥≤<>]+|[^\w%]+$/g,'');
+  let pass=true; const missing=[];
+  words.forEach(p=>{ if(p.req&&!p.ok){ pass=false; missing.push(clean(p.w)); } });
+  // Extra numbers, "not" and comparison signs always count. An extra "and" or "or" is fine when it just
+  // joins a list; it counts only where it turns a slash ("IV/IO", "reported/witnessed") into "and".
+  // Swapping "and" for "or" already shows up as the protocol's word missing.
+  const EXTRA=t=>CRIT(t)&&t!=='and'&&t!=='or';
+  const cnt=arr=>arr.filter(EXTRA).reduce((o,t)=>(o[t]=(o[t]||0)+1,o),{});
+  const want=cnt(ref.toks.map(x=>x.t)), got=cnt(user);
+  Object.keys(got).forEach(t=>{ if(got[t]>(want[t]||0)){ pass=false; missing.push('extra “'+(CRIT_LABEL[t]||t)+'”'); } });
+  const before=j=>{ let r=-1,u=-1; for(const [ri,uj] of pairs){ if(uj<j&&uj>u){ u=uj; r=ri; } } return r; };
+  const after=j=>{ let r=-1,u=Infinity; for(const [ri,uj] of pairs){ if(uj>j&&uj<u){ u=uj; r=ri; } } return r; };
+  const slashAnd=[];
+  if(!opts.lenient){
+    for(let j=0;j<m;j++){
+      if(user[j]!=='and'||usedU.has(j)) continue;
+      const x=before(j), y=after(j);
+      if(x>=0&&y===x+1&&req[y]===req[x]+1&&ref.slash.has(req[x])){
+        slashAnd.push(j); pass=false;
+        missing.push('“and” for “'+ref.toks[req[x]].t+'/'+ref.toks[req[y]].t+'”');
+        [x,y].forEach(r=>{ const t=ref.toks[req[r]]; (t.wis||[t.wi]).forEach(wi=>{ words[wi].bad=true; }); });
+      }
+    }
+  }
+  // Phrases to point out: each displaced word with a word of context either side, merged when close.
+  const wis=[...new Set(displaced.map(d=>ref.toks[req[d.i]].wi))].sort((x,y)=>x-y);
+  const groups=[]; wis.forEach(wi=>{ const g=groups[groups.length-1]; if(g&&wi-g[1]<=4) g[1]=wi; else groups.push([wi,wi]); });
+  const order=groups.map(([lo,hi])=>{
+    const ws=[]; for(let k=Math.max(0,lo-4);k<=Math.min(ref.parts.length-1,hi+4);k++){ if(ref.parts[k].trim()&&!/^[•◦]$/.test(ref.parts[k])) ws.push(ref.parts[k]); }
+    return ws.join(' ').replace(/^[^\w≥≤<>(]+|[^\w%)]+$/g,'');
+  });
+  if(orderFail){ pass=false; missing.push('word order'); displaced.forEach(d=>{ const x=ref.toks[req[d.i]]; (x.wis||[x.wi]).forEach(wi=>{ words[wi].bad=true; }); }); }
+  // Count separate mistakes. Wrong words next to each other in the same bullet are one mistake ("alpha 1" for "beta-2").
+  const reqWords=[]; words.forEach((p,wi)=>{ if(p.req) reqWords.push(wi); });
+  const posOf=new Map(reqWords.map((wi,k)=>[wi,k]));
+  const prob=new Set(); words.forEach((p,wi)=>{ if(p.req&&(!p.ok||(orderFail&&p.ord))) prob.add(posOf.get(wi)); });
+  const anchors=[];
+  // An extra word is shown in the answer as "+word" where you typed it.
+  const markExtra=(j,label)=>{
+    const x=before(j); let wi, key='x';
+    if(x>=0){ const t=ref.toks[req[x]]; wi=Math.max(...(t.wis||[t.wi])); }
+    else { wi=words.findIndex(w=>w.w.trim()&&!/^[\u2022\u25e6]$/.test(w.w.trim())); key='px'; }
+    if(wi>=0) (words[wi][key]=words[wi][key]||[]).push(label);
+  };
+  const anchorAt=j=>{ const x=before(j); const wi=x>=0?ref.toks[req[x]].wi:(pairs.length?ref.toks[req[pairs[0][0]]].wi:reqWords[0]); return posOf.has(wi)?posOf.get(wi):0; };
+  slashAnd.forEach(j=>anchors.push(anchorAt(j)));
+  Object.keys(got).forEach(t=>{
+    let extra=got[t]-(want[t]||0); if(extra<=0) return;
+    for(let j=0;j<m&&extra>0;j++){ if(user[j]!==t||usedU.has(j)) continue; extra--; anchors.push(anchorAt(j)); markExtra(j,CRIT_LABEL[t]||t); }
+  });
+  const lineW=k=>ref.line[reqWords[k]];
+  const ps=[...prob].sort((x,y)=>x-y); const clusters=[];
+  ps.forEach(k=>{ const c=clusters[clusters.length-1]; if(c&&k-c[c.length-1]===1&&lineW(k)===lineW(c[c.length-1])) c.push(k); else clusters.push([k]); });
+  anchors.forEach(k=>{ const c=clusters.find(c=>c.includes(k)||c.includes(k+1)); if(c){ if(!c.includes(k)) c.push(k); } else clusters.push([k]); });
+  const mistakes=clusters.map(c=>({words:[...new Set(c.map(k=>reqWords[k]))].sort((x,y)=>x-y)}));
+  return {pass,res:[{k:false,parts:words}],missing:[...new Set(missing.filter(Boolean))],order,orderFail,mistakes};
+}
+// The clause around each mistake; clauses under 3 words take in the clause before them.
+function fixTargets(answer,g,opts){
+  opts=opts||{};
+  const ref=refOf(answer); const P=ref.parts, CL=ref.clause;
+  const size=ci=>P.filter((w,pi)=>CL[pi]===ci&&w.trim()&&!/^[\u2022\u25e6]$/.test(w.trim())).length;
+  const out=[]; const seen=new Set();
+  g.mistakes.forEach(mk=>{
+    let lo=Math.min(...mk.words.map(wi=>CL[wi])), hi=Math.max(...mk.words.map(wi=>CL[wi]));
+    if(!opts.any&&size(lo)+(hi>lo?size(hi):0)<3){ if(lo>0) lo--; else hi++; }
+    const key=lo+':'+hi; if(seen.has(key)) return; seen.add(key);
+    const text=P.filter((w,pi)=>CL[pi]>=lo&&CL[pi]<=hi).join('').replace(/(^|\n)\s*[\u2022\u25e6]\s*/g,'$1').trim();
+    if(text) out.push({text});
+  });
+  return out;
+}
+// Protocol numbers: "S-123, S-134" or just "123 134", any order; every one and no extras.
+function gradeProt(expected,text){
+  const want=expected.map(x=>x.replace(/\D/g,''));
+  const got=[...new Set(String(text).match(/\d+/g)||[])];
+  const missing=want.filter(x=>!got.includes(x)).map(x=>'S-'+x);
+  const extra=got.filter(x=>!want.includes(x)).map(x=>'S-'+x);
+  return {pass:got.length>0&&!missing.length&&!extra.length,missing,extra};
+}
+// Cards whose answer is "None" (no contraindications) or "Not indicated for use in pediatrics".
+const NONE_OK=new Set(['none','na','n a','not applicable','no contraindications','none listed']);
+const NA_OK=new Set(['na','n a','not applicable','not indicated','none']);
+const optsOf=item=>({any:!!item.any,lenient:!!item.lenient,eff:!!item.eff,alt:item.alt||null,phr:!!item.phr});
+function gradeItem(item,text,mode){
+  if(item.none||item.na){
+    const raw=norm(text), t=raw.filter(x=>x!=='a'&&x!=='an'&&x!=='the').join(' ');
+    const okSet=item.none?NONE_OK:NA_OK;
+    if(okSet.has(raw.join(' '))||okSet.has(t)) return {pass:true,res:[{k:false,text:displayText(item.a)}],missing:[],order:[],mistakes:[]};
+    if(item.na){ const g=grade(item.a,text,mode,optsOf(item)); if(g.pass) return g; }
+    return {pass:false,res:[{k:false,parts:[{w:displayText(item.a),req:true,ok:false}]}],missing:[item.none?'None':'NA'],order:[],mistakes:[{words:[0]}],special:true};
+  }
+  return grade(item.a,text,mode,optsOf(item));
+}
+function grade(answer,text,mode,opts){
+  const segs=parseAnswer(answer);
+  if(mode!=='exact'&&segs.some(s=>s.k)) return gradeKeys(segs,text);
+  return gradePlain(answer,text,mode==='exact'?'exact':'keys',opts);
+}
+
+/* ---- Catch mistakes as you type ---- */
+// After a mistake, LIVE_WARN more words shows a quiet warning; LIVE_STOP more words stops you.
+const LIVE_WARN=2, LIVE_STOP=5;
+const SHOW_TOK={asa:'ASA','5ht3':'5-HT3',nasalroute:'IN',hrate:'heart rate',w:'with',wo:'without',yr:'years',yoa:'years of age',hour:'hours',gte:'\u2265',gt:'>',lte:'\u2264',lt:'<'};
+const showTok=t=>SHOW_TOK[t]||t;
+// Exact protocol wording from one token to another, small words included.
+function refSlice(ref,ta,tb){
+  const xa=ref.toks[ta], xb=ref.toks[tb]; const a=Math.min(...(xa.wis||[xa.wi])), b=Math.max(...(xb.wis||[xb.wi]));
+  return ref.parts.slice(a,b+1).join('').replace(/\s*[\u2022\u25e6]\s*/g,' ').replace(/\s+/g,' ').trim().replace(/[,;:.]$/,'');
+}
+function refWord(ref,ti){ const x=ref.toks[ti]; return (x.wis||[x.wi]).map(wi=>ref.parts[wi]).join(' ').replace(/^[^\w\u2265\u2264<>]+|[^\w%]+$/g,''); }
+function liveCheck(item,text,mode){
+  if(item.none||item.na||parseAnswer(item.a).some(s=>s.k)) return {state:'ok'};
+  const ref=refOf(item.a,item.phr); const lee=LEEWAY[mode];
+  const O=optsOf(item); const U0=userToks(String(text).replace(/\S+$/,''),ref,lee,O);
+  // A term still being spelled out ("non steroidal anti ..." before "drug") isn't a mistake yet.
+  const U=U0.slice(0,U0.length-pendingTail(U0,ref,lee));
+  if(!U.length) return {state:'ok'};
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const R=req.map(i=>effRef(ref.toks[i].t,O));
+  const optT=new Set(ref.toks.filter(x=>x.opt).map(x=>x.t));
+  const soft=t=>t==='and'||t==='or'||optT.has(t);
+  const errs=[];
+  let fi=-1, fj=-1;
+  if(item.any){
+    U.forEach((u,j)=>{ if(!soft(u)&&!R.some(r=>tokEq(r,u))) errs.push({loc:j,kind:'unknown',j}); });
+  } else {
+    const pairs=lcsPairs(R,U); const at=new Map(pairs); const used=new Set(pairs.map(p=>p[1]));
+    if(pairs.length){ fi=pairs[pairs.length-1][0]; fj=pairs[pairs.length-1][1]; }
+    badExpansions(R,U,pairs,used).forEach(b=>{ b.run.forEach(q=>used.add(q)); errs.push({loc:b.run[0],kind:'exp',j:b.run[0],k:b.k,run:b.run}); });
+    for(let k=0;k<fi;k++){
+      if(at.has(k)) continue;
+      let up=-1, un=U.length;
+      for(let q=k-1;q>=0;q--) if(at.has(q)){ up=at.get(q); break; }
+      for(let q=k+1;q<=fi;q++) if(at.has(q)){ un=at.get(q); break; }
+      let flip=-1;
+      for(let j=Math.max(0,up-ORDER_SLACK);j<=Math.min(U.length-1,un+ORDER_SLACK);j++){ if(!used.has(j)&&tokEq(R[k],U[j])){ flip=j; break; } }
+      if(flip>=0){ used.add(flip); continue; }
+      let sub=-1; for(let j=up+1;j<un;j++){ if(!used.has(j)){ sub=j; break; } }
+      if(sub>=0){ used.add(sub); errs.push({loc:sub,kind:'sub',j:sub,k}); }
+      else errs.push({loc:un,kind:'miss',k,up});
+    }
+    for(let j=0;j<U.length;j++){
+      if(used.has(j)||soft(U[j])) continue;
+      let ahead=false; for(let q=fi+1;q<=Math.min(R.length-1,fi+3);q++) if(tokEq(R[q],U[j])) ahead=true;
+      if(ahead&&j>=fj-ORDER_SLACK) continue;
+      errs.push({loc:j,kind:pairs.length?'extra':'unknown',j});
+    }
+  }
+  if(!errs.length) return {state:'ok'};
+  errs.sort((x,y)=>x.loc-y.loc); const e=errs[0];
+  const after=U.length-1-e.loc;
+  const state=after>=LIVE_STOP?'stop':after>=LIVE_WARN?'warn':'ok';
+  let msg='';
+  if(state==='stop'){
+    const nextWords=from=>from<R.length?refSlice(ref,req[from],req[Math.min(R.length-1,from+3)]):'';
+    if(e.kind==='exp') msg=`You wrote \u201c${e.run.map(q=>showTok(U[q])).join(' ')}\u201d where P-115 says \u201c${refSlice(ref,req[e.k],req[e.k])}\u201d.`;
+    else if(e.kind==='sub') msg= `You wrote \u201c${showTok(U[e.j])}\u201d where P-115 says \u201c${refWord(ref,req[e.k])}\u201d.`;
+    else if(e.kind==='miss') msg=`You left out \u201c${refWord(ref,req[e.k])}\u201d${e.k>0?` after \u201c${refWord(ref,req[e.k-1])}\u201d`:''}.`;
+    else if(item.any) msg=`\u201c${showTok(U[e.j])}\u201d isn\u2019t in this list.`;
+    else if(e.j<fj){
+      // a stray word inside what you've typed: show the protocol wording around it
+      let a=-1,c=-1; for(const [ri,uj] of lcsPairs(R,U)){ if(uj<e.j) a=ri; else if(c<0&&uj>e.j) c=ri; }
+      const from=Math.max(0,a), to=c<0?Math.min(R.length-1,from+4):c;
+      msg=`\u201c${showTok(U[e.j])}\u201d doesn\u2019t belong there. P-115 says: \u201c${refSlice(ref,req[from],req[to])}\u201d.`;
+    }
+    else { const nw=nextWords(fi+1); msg=`\u201c${showTok(U[e.j])}\u201d doesn\u2019t belong there. ${nw?`P-115 ${fi>=0?'continues':'starts'}: \u201c${nw}\u2026\u201d`:'That\u2019s past the end of the answer.'}`; }
+  }
+  // Stopped: go back to the start of the sentence with the mistake (sentences end at . ; ! ? or a line break).
+  let cut=0;
+  if(state==='stop'){
+    const raw=String(text); const at=e.kind==='miss'?Math.max(0,e.up):e.loc;
+    const countBefore=b=>userToks(raw.slice(0,b),ref,lee,O).length;
+    const starts=new Set([0]); const re=/[.;!?](?=\s)|\n/g; let mm; while((mm=re.exec(raw))) starts.add(mm.index+1);
+    // Also where each protocol sentence or bullet begins in what you typed (for answers typed as one paragraph).
+    if(!item.any){
+      const wordStarts=[]; for(let i=0;i<raw.length;i++) if(/\S/.test(raw[i])&&(i===0||/\s/.test(raw[i-1]))) wordStarts.push(i);
+      const opens=q=>{ if(q===0) return true;
+        const x=ref.toks[req[q]], y=ref.toks[req[q-1]]; const wi=Math.min(...(x.wis||[x.wi])), pw=Math.max(...(y.wis||[y.wi]));
+        for(let k=wi-1;k>=pw;k--){ const w=ref.parts[k]; if(!w.trim()){ if(/\n/.test(w)) return true; continue; } if(/[.;!?]["'\u201d)]*$/.test(w)) return true; }
+        return false; };
+      for(const [q,j] of lcsPairs(R,U)){ if(!opens(q)) continue; const b=wordStarts.find(ws=>countBefore(ws)>=j); if(b!=null&&countBefore(b)===j) starts.add(b); }
+    }
+    for(const b of [...starts].sort((x,y)=>x-y)){ if(countBefore(b)<=at) cut=b; else break; }
+  }
+  return {state,msg,cut};
+}
+
+/* ---- Show next word ---- */
+function nextWord(item,text,mode){
+  if(item.none) return 'None';
+  if(item.na) return 'NA';
+  const ref=refOf(item.a,item.phr); const lee=LEEWAY[mode];
+  const O=optsOf(item);
+  const req=[]; ref.toks.forEach((x,i)=>{ if(!lee.has(x.t)&&!x.opt) req.push(i); });
+  const R=req.map(i=>effRef(ref.toks[i].t,O));
+  if(!R.length) return null;
+  // A word that could start a longer term ("myocardial" → MI) only counts as unfinished if it doesn't already fit.
+  const kOf=txt=>{ const U0=userToks(txt,ref,lee,O); const pend=pendingTail(U0,ref,lee);
+    const a=kAt(U0); if(!pend) return a; const b=kAt(U0.slice(0,U0.length-pend));
+    const av=a==null?R.length:a, bv=b==null?R.length:b; return av>bv&&av<=bv+pend?a:b; };
+  const optT=new Set(ref.toks.filter(x=>x.opt).map(x=>x.t));
+  const kAt=U1=>{ let k=0;
+    // your own "(NS)" right after "normal saline" is the same optional repeat the card has
+    const U=U1.filter((t,j)=>!(j>0&&U1[j-1]===t&&optT.has(t)));
+    if(!U.length) return 0;
+    if(item.any){
+      const lineOf=i=>ref.line[ref.toks[req[i]].wi];
+      const am=anyMatch(R,lineOf,U,grpOf(ref)); const lines=[...new Set(R.map((_,i)=>lineOf(i)))];
+      let curL=null, end=-1, start=0; am.spans.forEach((sp,L)=>{ if(sp[1]>end){ end=sp[1]; curL=L; start=sp[0]; } });
+      const hitSet=new Set(am.pairs.map(p=>p[0]));
+      // words typed after the last recognised bullet that start another bullet: you've begun that one
+      const trail=U.slice(end+1);
+      if(trail.length) for(const L of lines){ if(am.spans.has(L)) continue;
+        const idx=R.map((_,i)=>i).filter(i=>lineOf(i)===L);
+        if(trail.length<idx.length&&trail.every((t,j)=>tokEq(R[idx[j]],t))) return idx[trail.length]; }
+      if(curL!==null){
+        const idx=R.map((_,i)=>i).filter(i=>lineOf(i)===curL);
+        const last=lcsLast(idx.map(i=>R[i]),U.slice(start));
+        if(last+1<idx.length) k=idx[last+1]; else curL=null;
+      }
+      if(curL===null){
+        const L=lines.find(L=>!am.spans.has(L)); if(L===undefined) return null;
+        k=R.map((_,i)=>i).find(i=>lineOf(i)===L);
+      }
+    } else {
+      const last=lcsLast(R,U); if(last>=0) k=last+1;
+    }
+    return k;
+  };
+  // The last word without a space after it is still being typed, unless it already is the next word.
+  const full=String(text), strip=full.replace(/\S+$/,''), tail=full.slice(strip.length);
+  let k=kOf(strip);
+  if(tail&&k!=null&&k<R.length){
+    // count it if adding it moves you forward by no more than its own words (so a skipped word isn't jumped over)
+    const n=Math.max(1,userToks(tail,ref,lee,O).length); const k2=kOf(full); const kv=k2==null?R.length:k2;
+    if(kv>k&&kv<=k+n) k=kv;
+  }
+  if(k==null||k>=R.length) return null;
+  return refWord(ref,req[k]);
+}
+
+/* ---- Mnemonics: first letter of each adverse effect ---- */
+function mnemonicLetters(items,az){
+  const list=az?items.slice().sort((x,y)=>x.localeCompare(y,undefined,{sensitivity:'base'})):items;
+  return list.map(x=>x.trim().charAt(0).toUpperCase()).join(' ');
+}
+// Adverse effects in the order of a mnemonic view: book order, A–Z, or the order of your own mnemonic.
+// Each word of your mnemonic picks the effect it stands for (first letters, then the closest start;
+// ties go to book order). A mnemonic written as capitals only ("FSDNHFSP") counts letter by letter.
+// If it doesn't spell out at least half of the effects, book order is used.
+function mnemonicOrder(items,view,mine){
+  if(view==='az') return items.slice().sort((x,y)=>x.localeCompare(y,undefined,{sensitivity:'base'}));
+  if(view==='mine'&&mine&&String(mine).trim()){
+    const caps=!/[a-z]/.test(mine); const keys=[];
+    String(mine).split(/[^A-Za-z0-9']+/).filter(w=>/^[A-Za-z]/.test(w)).forEach(w=>{ if(caps&&w.length>1) w.replace(/[^A-Za-z]/g,'').split('').forEach(c=>keys.push(c)); else keys.push(w); });
+    const lcp=(a,b)=>{ a=a.toLowerCase(); b=b.toLowerCase(); let k=0; while(k<a.length&&k<b.length&&a[k]===b[k]) k++; return k; };
+    const left=items.map((x,i)=>i); const out=[];
+    for(const w of keys){ let best=-1,bl=0; left.forEach((i,li)=>{ const l=lcp(w,items[i].trim()); if(l>bl){ bl=l; best=li; } }); if(best>=0){ out.push(items[left[best]]); left.splice(best,1); } }
+    if(out.length*2>=items.length) return out.concat(left.map(i=>items[i]));
+  }
+  return items.slice();
+}
+/*CORE-END*/
+
+/*DATA-START*/
+// Source: County of San Diego EMS, P-115 Treatment Protocol Medication List, 7/1/2026
+// (2026-27 Protocol & Policy Updates Packet). Card text is copied word for word.
+const MOA=[
+ ["Acetaminophen (IV)", "Mechanism of action unclear; may work peripherally to block pain impulse generation; may also inhibit prostaglandin synthesis in CNS."],
+ ["Activated Charcoal", "Adsorbs a variety of drugs and chemicals (e.g., physical binding of a molecule to the surface of charcoal particles); desorption of bound particles may occur unless the ratio of charcoal to toxin is extremely high."],
+ ["Adenosine", "Slows conduction through the AV node and interrupts AV reentry pathways as well as conduction through the SA nodes."],
+ ["Albuterol", "Selective beta-2 adrenergic agonist that causes relaxation of smooth muscles in the bronchial tree, decreasing airway resistance, facilitating mucous drainage and increasing vital capacity; shifts potassium intracellular; has mild beta-1 activity that may increase heart rate."],
+ ["Levalbuterol", "Relaxes bronchial smooth muscle by action on beta-2 receptors; less likely to cause tachycardia than albuterol."],
+ ["Amiodarone", "Class III antidysrhythmic agent that inhibits adrenergic stimulation; affects sodium, potassium, and calcium channels; markedly prolongs action potential and repolarization; decreases AV conduction and sinus node function."],
+ ["Aspirin", "Inhibits platelet aggregation and inhibits synthesis of prostaglandin by cyclooxygenase; has antipyretic and analgesic activity."],
+ ["Atropine", "Blocks the action of acetylcholine at parasympathetic sites in smooth muscle, secretory glands, and the CNS; increases cardiac output, dries secretions; reverses the muscarinic effects of cholinergic poisoning."],
+ ["Buprenorphine-Naloxone", "Exerts its analgesic effect via high affinity binding to mu-opioid receptors in the CNS; displays partial mu agonist and weak kappa antagonist activity. Naloxone is a competitive opioid antagonist."],
+ ["Calcium Chloride", "Essential regulator for the excitation threshold of nerves and muscles; causes significant increase in myocardial contractility and ventricular automaticity. Antidote for some electrolyte imbalances and calcium channel and/or beta blocker toxicity."],
+ ["Dextrose", "Main form of glucose used by the body to create energy; elevates serum blood glucose levels."],
+ ["Diphenhydramine", "H1 (histamine) receptor antagonist; works on effector cells in respiratory tract, blood vessels, and GI smooth muscle; also has anticholinergic properties."],
+ ["Epinephrine", "A naturally occurring catecholamine that acts directly on alpha- and beta-adrenergic receptors. It is the most potent activator of alpha receptors, vasoconstricting the aorta and peripheral vasculature. Beta-1 stimulation increases inotropy, chronotropy, and AV conduction. Beta-2 stimulation causes bronchial smooth muscle relaxation and vasodilation to internal organs and skeletal muscles."],
+ ["Fentanyl", "Opioid agonist-analgesic; inhibits ascending pain pathways, thus altering pain perception; increases pain threshold; produces analgesia, respiratory depression, and sedation."],
+ ["Glucagon", "A hormone naturally produced by pancreatic alpha cells of the islets of Langerhans. Causes breakdown of glycogen (stored in the liver) to glucose and inhibits the synthesis of glycogen from glucose. These combined actions increase blood glucose levels."],
+ ["Ipratropium Bromide", "Anticholinergic (parasympatholytic) agent; inhibits vagally mediated reflexes by antagonizing acetylcholine action; prevents increase in intracellular calcium concentration that is caused by interaction of acetylcholine with muscarinic receptors on bronchial smooth muscle."],
+ ["Ketamine", "Dissociative anesthetic; produces a cataleptic-like state in which the patient is dissociated from the surrounding environment by direct action on the cortex and limbic system; noncompetitive NMDA receptor antagonist that blocks glutamate; low (sub-dissociative) doses produce analgesia."],
+ ["Lidocaine", "Class 1b antidysrhythmic; combines with fast sodium channels and thereby inhibits recovery after repolarization, resulting in decreasing myocardial excitability and conduction velocity."],
+ ["Magnesium Sulfate", "Depresses CNS, blocks peripheral neuromuscular transmission, produces anticonvulsant effects; decreases amount of acetylcholine released at end-plate by motor nerve impulse. Slows rate of sinoatrial (SA) node impulse formation in myocardium and prolongs conduction time."],
+ ["Midazolam", "Binds to receptors at multiple sites within the CNS; potentiates GABA receptor system which produces anxiolytic, anticonvulsant, muscle relaxant, and amnesic effects."],
+ ["Morphine", "Opioid agonist-analgesic; inhibits ascending pain pathways, thus altering pain perception; increases pain threshold; produces analgesia, respiratory depression, and sedation."],
+ ["Naloxone", "Competitive inhibitor of opioid receptors in the brain. Reverses the respiratory depression associated with opioid overdose."],
+ ["Nitroglycerin", "Nitrate enters vascular smooth muscle and is converted to nitric oxide leading to vasodilation. Relaxes smooth muscle via dose-dependent dilation of arterial and venous beds: reduces both preload, afterload, and myocardial oxygen demand. Also improves coronary collateral circulation. Lowers blood pressure, increases heart rate and occasionally causes paradoxical bradycardia."],
+ ["Ondansetron", "Mechanism of action unclear; believed to function via serotonin antagonism at central and/or peripheral receptors. Serotonin receptors of the 5-HT3 type are present both peripherally on vagal nerve terminals and centrally in the chemoreceptor trigger zone of the area of the medullary structure that controls vomiting. May cause prolongation of the QT interval."],
+ ["Sodium Bicarbonate", "Increases blood and urinary pH by neutralizing hydrogen ion concentration."],
+ ["Tranexamic Acid", "Prevents clot breakdown by inhibiting the activation of plasminogen, which reduces the conversion of plasminogen to plasmin (enzyme that halts the clotting process). Increases fibrin formation, which impedes blood flow for the formation of a clot."]
+];
+const CLASS=[
+ ["Acetaminophen (IV)", "Analgesic, antipyretic"],
+ ["Activated Charcoal", "Antidote"],
+ ["Adenosine", "Antidysrhythmic"],
+ ["Albuterol / Levalbuterol", "Beta-2 receptor agonist"],
+ ["Amiodarone", "Antidysrhythmic"],
+ ["Aspirin", "Antiplatelet agent, non-steroidal anti-inflammatory drug (NSAID)"],
+ ["Atropine", "Anticholinergic, toxicity antidote"],
+ ["Buprenorphine-Naloxone", "• Buprenorphine: analgesic, opioid antagonist, opioid partial agonist\n• Naloxone: opioid reversal agent"],
+ ["Calcium Chloride", "Electrolyte, antidote"],
+ ["Dextrose", "Glucose-elevating agent"],
+ ["Diphenhydramine", "Antihistamine"],
+ ["Epinephrine", "Alpha/beta adrenergic agonist"],
+ ["Fentanyl", "Synthetic opioid, opioid analgesic"],
+ ["Glucagon", "Glucose-elevating agent, antidote"],
+ ["Ipratropium Bromide", "Anticholinergic"],
+ ["Ketamine", "Analgesic (in sub-dissociative doses)"],
+ ["Lidocaine", "Antidysrhythmic, anesthetic"],
+ ["Magnesium Sulfate", "Antidysrhythmic, electrolyte"],
+ ["Midazolam", "Anticonvulsant, antianxiety agent, anxiolytics, benzodiazepines"],
+ ["Morphine", "Opioid analgesic"],
+ ["Naloxone", "Opioid reversal agent"],
+ ["Nitroglycerin", "Nitrate, anti-anginal"],
+ ["Ondansetron", "Antiemetic, selective 5-HT3 antagonist"],
+ ["Sodium Bicarbonate", "Alkalizing agent, antidote"],
+ ["Tranexamic Acid", "Hemostatic agent, antifibrinolytic agent, plasminogen inhibitor"]
+];
+const IND=[
+ ["Acetaminophen (IV)", "Management of acute pain", ["S-141", "S-173"]],
+ ["Activated Charcoal", "Management of overdose and poisoning", ["S-134", "S-165"]],
+ ["Adenosine", "Management of supraventricular tachycardia (SVT)", ["S-127", "S-163"]],
+ ["Albuterol / Levalbuterol", "Management of respiratory distress (non-cardiac, anaphylaxis, and burns), suspected hyperkalemia, and specific crush injuries", ["S-122", "S-124", "S-127", "S-131", "S-136", "S-139", "S-162", "S-163", "S-167", "S-169", "S-170"]],
+ ["Amiodarone", "Management of ventricular tachycardia and ventricular fibrillation", ["S-127", "S-163"]],
+ ["Aspirin", "Antiplatelet agent for the care of patients suspected of suffering from an acute coronary syndrome", ["S-126"]],
+ ["Atropine", "Management of unstable bradycardia and symptomatic organophosphate poisoning", ["S-127", "S-134", "S-163", "S-165"]],
+ ["Buprenorphine-Naloxone", "Management of opioid withdrawal and opioid use disorder", ["S-145"]],
+ ["Calcium Chloride", "Management of suspected hyperkalemia, calcium channel blocker overdose, and specific crush injuries", ["S-127", "S-131", "S-134", "S-139", "S-163", "S-169"]],
+ ["Dextrose", "Management of hypoglycemia", ["S-123", "S-161"]],
+ ["Diphenhydramine", "Management of allergic reactions and extrapyramidal reactions", ["S-122", "S-134", "S-162", "S-165"]],
+ ["Epinephrine (1:1,000)", "Management of anaphylaxis, severe respiratory distress/failure, and stridor in pediatrics", ["S-122", "S-136", "S-162", "S-167", "S-170"]],
+ ["Epinephrine (1:10,000)", "Management of cardiac arrest and bradycardia in pediatric patients", ["S-127", "S-130", "S-133", "S-163", "S-166", "S-176"]],
+ ["Epinephrine (1:100,000)", "Management of severe anaphylaxis and shock", ["S-122", "S-126", "S-127", "S-138", "S-143", "S-162", "S-163", "S-168", "S-177"]],
+ ["Fentanyl", "Management of acute pain", ["S-141", "S-173"]],
+ ["Glucagon", "Management of hypoglycemia and beta blocker overdose with cardiac effects", ["S-123", "S-134", "S-161"]],
+ ["Ipratropium Bromide", "Management of respiratory distress (non-cardiac)", ["S-122", "S-136", "S-162", "S-167"]],
+ ["Ketamine", "Management of acute pain", ["S-141"]],
+ ["Lidocaine", "Management of ventricular tachycardia and ventricular fibrillation, and as a local anesthetic for the IO procedure in conscious adults", ["S-104", "S-127", "S-163"]],
+ ["Magnesium Sulfate", "Management of preeclampsia and eclampsia", ["S-133", "S-166"]],
+ ["Midazolam", "Management of seizures, sedation pre-cardioversion/pre-pacing, unable to tolerate CPAP, intubated patients with agitation, and agitated/combative patients", ["S-123", "S-127", "S-135", "S-136", "S-142", "S-161", "S-163", "S-175", "S-178"]],
+ ["Morphine", "Management of acute pain", ["S-141", "S-173"]],
+ ["Naloxone", "Reversal of acute opioid toxicity", ["S-123", "S-134", "S-161", "S-165"]],
+ ["Nitroglycerin", "Management of discomfort/pain of cardiac origin and acute pulmonary edema", ["S-126", "S-136"]],
+ ["Ondansetron", "Management of nausea or vomiting", ["S-120", "S-139", "S-169", "S-174"]],
+ ["Sodium Bicarbonate", "Management of hyperkalemia, tricyclic antidepressant overdose, and specific crush injuries", ["S-127", "S-131", "S-134", "S-139", "S-163", "S-165", "S-169"]],
+ ["Tranexamic Acid", "Management of trauma-associated hemorrhage and postpartum hemorrhage", ["S-133", "S-139", "S-166"]]
+];
+const CONTRA=[
+ ["Acetaminophen (IV)", "• Severe acute liver disease\n• Known or suspected total dose exceeding 4,000 mg in a 24-hour period\n• <2 years of age\n• Pregnancy with pain from active labor", 0],
+ ["Activated Charcoal", "Caustic agents, hydrocarbons, or liquid ingestions (e.g., alcohols)", 0],
+ ["Adenosine", "• Second- or third-degree AV block (without pacemaker)\n• Sick sinus syndrome", 0],
+ ["Albuterol / Levalbuterol", "<6 years of age (levalbuterol only)", 0],
+ ["Amiodarone", "None", 1],
+ ["Aspirin", "None", 1],
+ ["Atropine", "None", 1],
+ ["Buprenorphine-Naloxone", "• Any methadone use within the last 10 days\n• Lack of opioid withdrawal signs or symptoms\n• Severe medical illness (e.g., sepsis, respiratory distress)\n• Altered mental status\n• <16 years of age", 0],
+ ["Calcium Chloride", "None", 1],
+ ["Dextrose", "None", 1],
+ ["Diphenhydramine", "None", 1],
+ ["Epinephrine", "None", 1],
+ ["Fentanyl", "Pregnancy with pain from active labor", 0],
+ ["Glucagon", "None", 1],
+ ["Ipratropium Bromide", "None", 1],
+ ["Ketamine", "• Sedation\n• Use of dissociative dose ranges\n• <15 years of age\n• GCS <15\n• Pregnant patient\n• Known or suspected alcohol or drug intoxication", 0],
+ ["Lidocaine", "Cardiac pre-excitation syndromes, e.g., Wolff-Parkinson-White (WPW) syndrome, Lown-Ganong-Levine (LGL) syndrome", 0],
+ ["Magnesium Sulfate", "• Myasthenia gravis\n• Hypermagnesemia\n• Renal failure", 0],
+ ["Midazolam", "None", 1],
+ ["Morphine", "Pregnancy with pain from active labor", 0],
+ ["Naloxone", "None", 1],
+ ["Nitroglycerin", "• Use of erectile dysfunction or pulmonary hypertension medications within last 48 hours\n• Suspected intracranial bleed", 0],
+ ["Ondansetron", "• Known or suspected long QT syndrome\n• <6 months of age", 0],
+ ["Sodium Bicarbonate", "None", 1],
+ ["Tranexamic Acid", "• Isolated, severe head injury\n• Thromboembolic event within 24 hours (e.g., stroke, MI, DVT, PE)\n• Potential need for reimplantation\n• Mechanism of injury or delivery more than 3 hours prior to EMS care", 0]
+];
+const PEDS=[
+ ["Acetaminophen (IV)", "Acetaminophen IV per drug chart in 100 ml of NS over 15 min", 0],
+ ["Activated Charcoal", "Activated charcoal per drug chart PO", 0],
+ ["Adenosine", "Adenosine per drug chart rapid IV/IO, followed with 20 mL NS rapid IV/IO, MR x2", 0],
+ ["Albuterol / Levalbuterol", "• For respiratory distress (non-cardiac, anaphylaxis, and burns), albuterol/levalbuterol per drug chart via nebulizer, MR\n• For suspected hyperkalemia and specific crush injuries, continuous albuterol/levalbuterol per drug chart via nebulizer", 0],
+ ["Amiodarone", "• For stable VT, amiodarone per drug chart BHPO\n• For persistent VF/pulseless VT after 3 defibrillation attempts, amiodarone per drug chart IV/IO, MR per drug chart x2\n• For reported/witnessed AICD firing ≥2, amiodarone per drug chart, MR BHPO", 0],
+ ["Aspirin", "Not indicated for use in pediatrics", 1],
+ ["Atropine", "• For unstable bradycardia after 3 doses of epinephrine, atropine per drug chart IV/IO, MR x1 in 5 min\n• For symptomatic organophosphate poisoning, atropine per drug chart IV/IO. For continued signs/symptoms of SLUDGE/BBB, double prior atropine dose IV/IO q3-5 min", 0],
+ ["Buprenorphine-Naloxone", "Not indicated for use in pediatrics", 1],
+ ["Calcium Chloride", "• For PEA with suspected hyperkalemia, CaCl2 per drug chart IV/IO, MR x1 in 5 min for continued ECG findings consistent with hyperkalemia\n• For specific crush injuries, CaCl2 IV/IO over 30 sec per drug chart, MR x1 in 5 min for continued ECG findings consistent with hyperkalemia", 0],
+ ["Dextrose", "• D10 per drug chart IV if BS <60 mg/dL (<45 mg/dL for neonate)\n• If patient remains symptomatic and BS remains <60 mg/dL (<45 mg/dL for neonate), MR", 0],
+ ["Diphenhydramine", "Diphenhydramine per drug chart IV/IM", 0],
+ ["Epinephrine (1:1,000)", "• IM: 1:1,000 per drug chart IM, MR x2 q5 min\n• Nebulized: 1:1,000 per drug chart (combined with 3 mL normal saline) via nebulizer, MR x1", 0],
+ ["Epinephrine (1:10,000)", "• For cardiac arrest or newborn with HR <60, epinephrine 1:10,000 per drug chart IV/IO q3-5 min\n• For VF and pulseless VT, epinephrine 1:10,000 per drug chart IV/IO q3-5 min, begin after second defibrillation\n• For cardiac arrest with hypothermia, epinephrine 1:10,000 per drug chart IV/IO x1\n• For unstable bradycardia, epinephrine 1:10,000 per drug chart IV/IO, MR x2 q3-5 minutes. MR q3-5 minutes BHO", 0],
+ ["Epinephrine (1:100,000)", "Push-dose epinephrine 1:100,000 (0.01 mg/mL) per drug chart IV/IO, MR q3 min, titrate to adequate perfusion", 0],
+ ["Fentanyl", "• IV:\n    ◦ <10 kg: Fentanyl IV per drug chart. MR at half initial IV dose BHO\n    ◦ ≥10 kg: Fentanyl IV per drug chart. MR at half initial IV dose\n• IN:\n    ◦ <10 kg: Fentanyl IN per drug chart. MR at initial IN dose BHO\n    ◦ ≥10 kg: Fentanyl IN per drug chart. MR at initial IN dose", 0],
+ ["Glucagon", "Glucagon per drug chart IM", 0],
+ ["Ipratropium Bromide", "Ipratropium bromide per drug chart via nebulizer added to first dose of albuterol/levalbuterol", 0],
+ ["Ketamine", "Not indicated for use in pediatrics", 1],
+ ["Lidocaine", "• For stable VT, lidocaine per drug chart BHPO\n• For persistent VF/pulseless VT after 3 defibrillation attempts, lidocaine per drug chart IV/IO, MR per drug chart x1 q5 min\n• For reported/witnessed AICD firing ≥2, lidocaine per drug chart, MR BHPO", 0],
+ ["Magnesium Sulfate", "Not indicated for use in pediatrics", 1],
+ ["Midazolam", "• Status epilepticus\n    ◦ IM midazolam is the first line route of administration if an IV not already established\n    ◦ Midazolam IM/IN per drug chart, MR x1 in 5 min\n    ◦ If vascular access present, midazolam slow IV/IO per drug chart, MR x1 in 5 min\n• Sedation pre-cardioversion/pre-pacing\n    ◦ Midazolam per drug chart IV/IO\n• Intubated with agitation\n    ◦ Midazolam per drug chart IM/IN/IV/IO, MR x1 in 5-10 min\n• Psychiatric/behavioral emergencies\n    ◦ Midazolam per drug chart IM/IN/IV, MR x1 in 10 min", 0],
+ ["Morphine", "Morphine IV/IM per drug chart", 0],
+ ["Naloxone", "• Naloxone per drug chart IN/IV/IM, MR\n• For opioid-dependent patients, dilute and titrate slowly per drug chart.", 0],
+ ["Nitroglycerin", "Not indicated for use in pediatrics", 1],
+ ["Ondansetron", "Ondansetron IV/IM/ODT per drug chart", 0],
+ ["Sodium Bicarbonate", "NaHCO3 per drug chart IV/IO", 0],
+ ["Tranexamic Acid", "Not indicated for use in pediatrics", 1]
+];
+const DOSE=[
+ ["Acetaminophen (IV)", "Acetaminophen 1,000 mg IV over 15 min"],
+ ["Activated Charcoal", "Activated charcoal 50 gm PO"],
+ ["Adenosine", "• Adenosine 6 mg rapid IV/IO followed by 20 mL NS rapid IV/IO\n• If no conversion, adenosine 12 mg rapid IV/IO followed by 20 mL NS rapid IV/IO, MR x1"],
+ ["Albuterol / Levalbuterol", "• For respiratory distress (non-cardiac, anaphylaxis, and burns), albuterol/levalbuterol 6 mL via nebulizer, MR\n• For suspected hyperkalemia and specific crush injuries, continuous albuterol/levalbuterol 6 mL via nebulizer"],
+ ["Amiodarone", "• For stable VT, amiodarone 150 mg in 100 mL of NS over 10 min IV/IO, MR x1 in 10 min\n• For persistent VF/pulseless VT after 3 defibrillation attempts, amiodarone 300 mg IV/IO, MR 150 mg q3-5 min (max 450 mg)\n• For reported/witnessed AICD firing ≥2, amiodarone 150 mg in 100 mL of NS over 10 min IV/IO, MR x1 in 10 min"],
+ ["Aspirin", "Aspirin 324 mg chewable PO"],
+ ["Atropine", "• For unstable bradycardia, atropine 1 mg IV/IO, MR q3-5 min to max 3 mg\n• For symptomatic organophosphate poisoning, atropine 2 mg IV/IO. For continued signs/symptoms of SLUDGE/BBB, double prior atropine dose IV/IO q3-5 min"],
+ ["Buprenorphine-Naloxone", "• Buprenorphine-naloxone (Suboxone®) 16 mg/4 mg SL BHO (opioid withdrawal base)\n• For continued symptoms, repeat with buprenorphine-naloxone (Suboxone®) 8 mg/2 mg SL to a max of 24 mg/6 mg"],
+ ["Calcium Chloride", "• For PEA with suspected hyperkalemia, CaCl2 1 gm IV/IO\n• For suspected hyperkalemia, if widened QRS complex, immediately administer CaCl2 1 gm IV/IO\n• For suspected calcium channel blocker OD, CaCl2 1 gm IV/IO\n• For specific crush injuries, CaCl2 1 gm IV/IO over 30 sec"],
+ ["Dextrose", "• D10 25 gm IV if BS <60 mg/dL\n• If patient remains symptomatic and BS remains <60 mg/dL, MR"],
+ ["Diphenhydramine", "Diphenhydramine 50 mg IV/IM"],
+ ["Epinephrine (1:1,000)", "Epinephrine 1:1,000 (1 mg/mL) 0.5 mg IM, MR x2 q5 min"],
+ ["Epinephrine (1:10,000)", "• For cardiac arrest, epinephrine 1:10,000 1 mg IV/IO q3-5 min\n• For VF and pulseless VT, epinephrine 1:10,000 1 mg IV/IO q3-5 min, begin after second defibrillation\n• For cardiac arrest with hypothermia, epinephrine 1:10,000 1 mg IV/IO x1"],
+ ["Epinephrine (1:100,000)", "Push-dose epinephrine 1:100,000 (0.01 mg/mL) 1 mL IV/IO, MR q3 min, titrate to SBP ≥90 mmHg"],
+ ["Fentanyl", "• IV:\n    ◦ Up to 100 mcg IV\n    ◦ MR up to 50 mcg IV q5 min x2\n    ◦ Maximum total dose 200 mcg IV\n• IN:\n    ◦ Up to 50 mcg IN\n    ◦ MR up to 50 mcg IN q15 min x2\n    ◦ Maximum total dose 150 mcg IN"],
+ ["Glucagon", "• For hypoglycemia, glucagon 1 mL IM\n• For beta blocker overdose, glucagon 1-5 mg IV, MR 5-10 min, for a total of 10 mg"],
+ ["Ipratropium Bromide", "Ipratropium bromide 2.5 mL 0.02% via nebulizer added to first dose of albuterol/levalbuterol"],
+ ["Ketamine", "• IV: 0.3 mg/kg in 100 mL of NS over 10 min IV. Maximum for any IV dose is 30 mg. MR x1 in 15 min if pain remains moderate or severe. Maximum total dose 60 mg IV.\n• IN: 0.5 mg/kg IN (50 mg/mL concentration). Maximum for any IN dose is 50 mg. MR x1 in 15 min if pain remains moderate or severe. Maximum total dose 100 mg IN."],
+ ["Lidocaine", "• For stable VT, persistent VF/pulseless VT after 3 defibrillation attempts, and reported/witnessed AICD firing ≥2, lidocaine 1.5 mg/kg IV/IO, MR at 0.5 mg/kg IV/IO q5 min to max 3 mg/kg\n• For IO procedure in conscious adult patients, slowly infuse lidocaine 40 mg IO prior to fluid/medication administration"],
+ ["Magnesium Sulfate", "Magnesium sulfate 4 gm in 100 mL of NS over 20 min IV/IO"],
+ ["Midazolam", "• Status epilepticus\n    ◦ IM midazolam is the first line route of administration if an IV not already established\n    ◦ Midazolam 10 mg IM/IN, MR x1 in 5 min\n    ◦ If vascular access present, midazolam 5 mg slow IV/IO, MR x1 in 5 min\n• Sedation pre-cardioversion/pre-pacing\n    ◦ Midazolam 1-5 mg IV/IO\n• Unable to tolerate CPAP\n    ◦ Midazolam 0.5-1 mg IM/IN/IV\n• Intubated with agitation\n    ◦ Midazolam 2-5 mg IM/IN/IV/IO, MR x1 in 5-10 min\n• Psychiatric/behavioral emergencies\n    ◦ Midazolam 5 mg IM/IN/IV, MR x1 in 5-10 min"],
+ ["Morphine", "• IV: Up to 0.1 mg/kg IV. MR in 5 min at half initial IV dose. MR in additional 5 min at half initial IV dose\n• IM: Up to 0.1 mg/kg IM. MR in 15 min at half initial IM dose. MR in additional 15 min at half initial IM dose"],
+ ["Naloxone", "• Naloxone 2 mg IN/IM/IV, MR OR naloxone 4 mg via nasal spray preloaded single-dose device\n• If patient refuses transport, give additional naloxone 2 mg IM OR naloxone 4 mg via nasal spray preloaded single-dose device. Administer full dose in one nostril, MR"],
+ ["Nitroglycerin", "• For discomfort/pain of cardiac origin if SBP ≥100 mmHg, NTG 0.4 mg SL, MR q3-5 min\n• For CHF\n    ◦ If systolic BP ≥100 but <150: NTG 0.4 mg SL, MR q3-5 min\n    ◦ If systolic BP ≥150: NTG 0.8 mg SL, MR q3-5 min"],
+ ["Ondansetron", "Ondansetron 4 mg IV/IM/ODT, MR x1 in 10 min"],
+ ["Sodium Bicarbonate", "NaHCO3 1 mEq/kg IV/IO"],
+ ["Tranexamic Acid", "Tranexamic acid 1 gm/10 mL IV/IO, in 50-100 mL NS, over 10 min"]
+];
+const ADV=[
+ ["Acetaminophen (IV)", "• Nausea/vomiting\n• Skin rash\n• Itching\n• Overdose can cause hepatotoxicity", ["Nausea/vomiting", "Skin rash", "Itching", "Overdose can cause hepatotoxicity"]],
+ ["Activated Charcoal", "• Nausea/vomiting", ["Nausea/vomiting"]],
+ ["Adenosine", "• Flushing\n• Sweating\n• Dizziness\n• Nervousness\n• Hypotension\n• Feeling of impending doom\n• Severe bronchospasm in patients with asthma\n• Paresthesia", ["Flushing", "Sweating", "Dizziness", "Nervousness", "Hypotension", "Feeling of impending doom", "Severe bronchospasm in patients with asthma", "Paresthesia"]],
+ ["Albuterol / Levalbuterol", "• Tremors\n• Headache\n• Nervousness\n• Dizziness\n• Dry mouth\n• Dysrhythmias\n• Chest discomfort\n• Palpitations\n• Nausea/vomiting", ["Tremors", "Headache", "Nervousness", "Dizziness", "Dry mouth", "Dysrhythmias", "Chest discomfort", "Palpitations", "Nausea/vomiting"]],
+ ["Amiodarone", "• Hypotension\n• Worsening of dysrhythmias\n• Prolonged QT interval\n• Bradycardia\n• AV block\n• Dizziness\n• Nausea/vomiting\n• Burning at the IV site", ["Hypotension", "Worsening of dysrhythmias", "Prolonged QT interval", "Bradycardia", "AV block", "Dizziness", "Nausea/vomiting", "Burning at the IV site"]],
+ ["Aspirin", "• GI bleeding\n• Epigastric pain\n• Nausea/vomiting", ["GI bleeding", "Epigastric pain", "Nausea/vomiting"]],
+ ["Atropine", "• Drowsiness\n• Confusion\n• Headache\n• Palpitations\n• Dysrhythmias\n• Nausea/vomiting\n• Pupil dilation\n• Dry mouth/nose/skin\n• Blurred vision\n• Urinary retention\n• Flushed, hot, dry skin", ["Drowsiness", "Confusion", "Headache", "Palpitations", "Dysrhythmias", "Nausea/vomiting", "Pupil dilation", "Dry mouth/nose/skin", "Blurred vision", "Urinary retention", "Flushed, hot, dry skin"]],
+ ["Buprenorphine-Naloxone", "• Diaphoresis\n• Abdominal pain\n• Nausea\n• Headache\n• Withdrawal syndrome\n• Palpitations", ["Diaphoresis", "Abdominal pain", "Nausea", "Headache", "Withdrawal syndrome", "Palpitations"]],
+ ["Calcium Chloride", "• Syncope\n• Bradycardia\n• Asystole\n• Hypotension\n• Nausea/vomiting\n• Metallic taste with rapid injection\n• Tissue necrosis at injection site", ["Syncope", "Bradycardia", "Asystole", "Hypotension", "Nausea/vomiting", "Metallic taste with rapid injection", "Tissue necrosis at injection site"]],
+ ["Dextrose", "• Warmth, pain, burning, or phlebitis from IV infusion", ["Warmth, pain, burning, or phlebitis from IV infusion"]],
+ ["Diphenhydramine", "• Drowsiness\n• Sedation\n• Seizures\n• Dizziness\n• Headache\n• Blurred vision\n• Wheezing\n• Thickening of bronchial secretions\n• Palpitations\n• Hypotension\n• Dysrhythmias\n• Dry mouth\n• Nausea/vomiting\n• Hallucinations, confusion, and paradoxical CNS excitation can occur in children", ["Drowsiness", "Sedation", "Seizures", "Dizziness", "Headache", "Blurred vision", "Wheezing", "Thickening of bronchial secretions", "Palpitations", "Hypotension", "Dysrhythmias", "Dry mouth", "Nausea/vomiting", "Hallucinations, confusion, and paradoxical CNS excitation can occur in children"]],
+ ["Epinephrine", "• Nervousness/restlessness\n• Headache\n• Chest pain\n• Tremors\n• Dysrhythmias\n• Nausea/vomiting\n• Hypertension\n• Palpitations", ["Nervousness/restlessness", "Headache", "Chest pain", "Tremors", "Dysrhythmias", "Nausea/vomiting", "Hypertension", "Palpitations"]],
+ ["Fentanyl", "• Confusion\n• Paradoxical excitation\n• Delirium\n• Sedation/drowsiness\n• CNS depression\n• Respiratory depression\n• Apnea\n• Dyspnea\n• Dysrhythmias\n• Hypotension\n• Syncope\n• Nausea/vomiting\n• Abdominal pain", ["Confusion", "Paradoxical excitation", "Delirium", "Sedation/drowsiness", "CNS depression", "Respiratory depression", "Apnea", "Dyspnea", "Dysrhythmias", "Hypotension", "Syncope", "Nausea/vomiting", "Abdominal pain"]],
+ ["Glucagon", "• Dizziness\n• Headache\n• Hypotension\n• Tachycardia\n• Nausea/vomiting\n• Rebound hypoglycemia", ["Dizziness", "Headache", "Hypotension", "Tachycardia", "Nausea/vomiting", "Rebound hypoglycemia"]],
+ ["Ipratropium Bromide", "• Headache\n• Dizziness\n• Nervousness\n• Tremors\n• Dyspnea\n• Worsening COPD symptoms\n• Hypertension\n• Tachycardia\n• Palpitations\n• Flushing\n• Dry mouth\n• Nausea/vomiting\n• GI discomfort", ["Headache", "Dizziness", "Nervousness", "Tremors", "Dyspnea", "Worsening COPD symptoms", "Hypertension", "Tachycardia", "Palpitations", "Flushing", "Dry mouth", "Nausea/vomiting", "GI discomfort"]],
+ ["Ketamine", "• Hypertension\n• Hallucinations\n• Nausea/vomiting\n• Nystagmus\n• Bronchodilation\n• Tachycardia\n• Increased secretions\n• Hypersalivation\n• Laryngospasm", ["Hypertension", "Hallucinations", "Nausea/vomiting", "Nystagmus", "Bronchodilation", "Tachycardia", "Increased secretions", "Hypersalivation", "Laryngospasm"]],
+ ["Lidocaine", "• Drowsiness\n• Confusion\n• Seizures\n• Slurred speech\n• Hypotension\n• Dysrhythmias\n• Cardiac arrest\n• Nausea/vomiting", ["Drowsiness", "Confusion", "Seizures", "Slurred speech", "Hypotension", "Dysrhythmias", "Cardiac arrest", "Nausea/vomiting"]],
+ ["Magnesium Sulfate", "• Respiratory depression or apnea\n• Bradycardia\n• Hypotension\n• CNS depression\n• Flushing and sweating", ["Respiratory depression or apnea", "Bradycardia", "Hypotension", "CNS depression", "Flushing and sweating"]],
+ ["Midazolam", "• Respiratory depression or apnea\n• Nausea/vomiting\n• Hypotension\n• Headache", ["Respiratory depression or apnea", "Nausea/vomiting", "Hypotension", "Headache"]],
+ ["Morphine", "• Confusion\n• Sedation\n• Headache\n• CNS depression\n• Respiratory depression or apnea\n• Bronchospasm\n• Dyspnea\n• Hypotension/orthostatic hypotension\n• Syncope\n• Bradycardia\n• Tachycardia\n• Nausea/vomiting", ["Confusion", "Sedation", "Headache", "CNS depression", "Respiratory depression or apnea", "Bronchospasm", "Dyspnea", "Hypotension/orthostatic hypotension", "Syncope", "Bradycardia", "Tachycardia", "Nausea/vomiting"]],
+ ["Naloxone", "• Restlessness\n• Seizures\n• Dyspnea\n• Pulmonary edema\n• Hypotension with rapid administration\n• Hypertension\n• Dysrhythmias\n• Diaphoresis\n• Nausea/vomiting\n• Withdrawal symptoms in opioid-dependent patients", ["Restlessness", "Seizures", "Dyspnea", "Pulmonary edema", "Hypotension with rapid administration", "Hypertension", "Dysrhythmias", "Diaphoresis", "Nausea/vomiting", "Withdrawal symptoms in opioid-dependent patients"]],
+ ["Nitroglycerin", "• Headache\n• Dizziness\n• Weakness\n• Reflex tachycardia\n• Syncope\n• Hypotension\n• Nausea/vomiting", ["Headache", "Dizziness", "Weakness", "Reflex tachycardia", "Syncope", "Hypotension", "Nausea/vomiting"]],
+ ["Ondansetron", "• Headache\n• Syncope\n• Wheezing\n• Bronchospasm\n• Dysrhythmias\n• ECG changes\n• Palpitations\n• Hives\n• Skin rash", ["Headache", "Syncope", "Wheezing", "Bronchospasm", "Dysrhythmias", "ECG changes", "Palpitations", "Hives", "Skin rash"]],
+ ["Sodium Bicarbonate", "• Electrolyte imbalance\n• Pulmonary edema (secondary to sodium overload)\n• Tremors\n• Twitching\n• Seizures (caused by alkalosis)", ["Electrolyte imbalance", "Pulmonary edema (secondary to sodium overload)", "Tremors", "Twitching", "Seizures (caused by alkalosis)"]],
+ ["Tranexamic Acid", "• Headache\n• Dizziness", ["Headache", "Dizziness"]]
+];
+const NOTES=[
+ ["Acetaminophen (IV)", "• Remember to consider non-pharmacologic pain treatments, e.g., place in position of comfort, apply ice packs/splints PRN, and verbal reassurance.\n• If patient refuses or has contraindications to acetaminophen, may treat as moderate pain with fentanyl or morphine."],
+ ["Activated Charcoal", "• Due to risk of charcoal aspiration, do not administer activated charcoal to a patient anticipated to have a decline in mental status over the next 30-60 minutes.\n• Does not effectively bind to or adsorb certain ions like metals (iron, lithium, sodium), electrolytes (potassium, magnesium), and acids/alkalis.\n• Authorized to administer activated charcoal on standing order, if recommended by Poison Control Center.\n• The 24-hour toll-free telephone number to Poison Control Center is (800) 222-1222.\n• Shake vigorously before use because separation occurs while it is stored."],
+ ["Adenosine", "• For stable patients, use Valsalva maneuver prior to administration. Discontinue Valsalva maneuver after 5-10 seconds if no conversion.\n• Ideally, cannulate a proximal vein with an 18-20g catheter. Use the IV port closest to the patient and rapidly flush with 20mL normal saline immediately.\n• Run a 6-second ECG strip before, during, and after drug administration.\n• Patients frequently have a brief period of escape beats or asystole before the sinus node starts up again. This may be perceived as a feeling of impending death and can be extremely frightening for patients.\n• If the wide-complex tachycardia is ventricular in origin, adenosine is highly unlikely to result in cardioversion.\n• Bronchospasm may occur in patients with a history of airway disease, such as asthma or COPD."],
+ ["Albuterol / Levalbuterol", "• Ineffective in croup and should be avoided.\n• Pediatric patients between 2-6 years of age may be more prone to adverse effects.\n• Do not assume patients have administered their own drug properly. Do not include home doses of albuterol/levalbuterol in your total drug administration consideration.\n• If concerned about aerosolized infectious exposure, substitute with MDI, if available.\n• Patients may need to be instructed on proper use of the MDI.\n• Levalbuterol may be substituted for albuterol and can be combined with ipratropium bromide. This substitution option applies to patients ≥6 years of age."],
+ ["Amiodarone", "• If patient is in unstable ventricular tachycardia, synchronized cardioversion should be performed first.\n• Monitor the patient for hypotension and increasing PR and QT intervals.\n• Risk factors for acute hypotension are patients >65 years of age with a history of myocardial infarction.\n• Closely monitor heart rate, blood pressure, and cardiac rhythm during and after administration.\n• Do not infuse with Ringer’s lactate solution."],
+ ["Aspirin", "• EMT: Authorized to assist patient to self-medicate own prescribed aspirin up to a maximum dose of 325 mg.\n• Administer aspirin even if discomfort/pain has resolved. If aspirin is not given, document the reason.\n• Aspirin may be withheld if an equivalent dose has been administered by a healthcare professional."],
+ ["Atropine", "• May omit atropine in bradycardic patients unlikely to have clinical benefit (e.g., heart transplant patients, second-degree type II, or third-degree heart block).\n• Use cautiously if myocardial infarction or ischemia is suspected, as atropine will increase myocardial oxygen demand, which may worsen the infarct.\n• In organophosphate poisoning, titrate atropine to SLUDGE/BBB signs/symptoms, not to tachycardia. Cardiac monitoring should be considered in all cases of severe organophosphate poisoning."],
+ ["Buprenorphine-Naloxone", "• Use of buprenorphine-naloxone is only authorized for agencies participating in the Buprenorphine Pilot Program.\n• Sharp Grossmont Hospital and Palomar Medical Center – Escondido are approved opioid withdrawal bases.\n• For patients with overdoses reversed by naloxone, calculate a COWS score and consider administration.\n• Calculate a COWS score before and after administration."],
+ ["Calcium Chloride", "• Confirm IV is patent prior to administration, as extravasation causes severe tissue necrosis. Avoid use in small veins (feet/hands) for this reason.\n• Precipitates to form calcium carbonate (chalk) when used with sodium bicarbonate. Administer calcium chloride and sodium bicarbonate in separate IV/IO or thoroughly flush in between administrations using at least 10 mL of normal saline.\n• Calcium chloride contains three times more elemental calcium than calcium gluconate does. Constant ECG and vital sign monitoring are essential.\n• Contact base hospital if dose exceeds par level."],
+ ["Dextrose", "• Confirm IV is patent prior to administration, as extravasation causes severe tissue necrosis. Use a large vein for administration and monitor the site closely.\n• Immediately stop administration if extravasation occurs; document it and notify the receiving facility staff.\n• Do not administer to patients with stroke unless hypoglycemia is documented.\n• Repeat blood glucose level is required if patient remains on scene (AMA or release) and initial blood glucose level was abnormal.\n• Repeat blood glucose is not indicated enroute if patient status is improving.\n• If D10 not available, can dilute D50 to make D10.\nMixing Instructions (D50 to D10)\n• Remove 50 mL normal saline (NS) from the 250 mL NS bag\n• Add 50 mL of D50 (25 gm/50 mL) to 200 mL NS bag\n• The mixture now has 25 gm/250 mL of dextrose at 10% concentration"],
+ ["Diphenhydramine", "• Administer slow IV.\n• Epinephrine is the most important immediate treatment for anaphylaxis and should be administered as soon as anaphylaxis is recognized. The pharmacologic actions address the pathophysiological changes that occur in anaphylaxis better than any other medication. Delayed epinephrine injection is associated with fatalities.\n• May be administered between epinephrine doses in anaphylaxis."],
+ ["Epinephrine (1:1,000)", "• EMT: Authorized to administer via auto-injector only.\n• Epinephrine is the most important immediate treatment for anaphylaxis and should be administered as soon as anaphylaxis is recognized. The pharmacologic actions address the pathophysiologic changes that occur in anaphylaxis better than any other medication. Delayed epinephrine injection is associated with fatalities.\n• Inadvertent IV injection of usual IM formulation and dose constitutes a 10-fold overdose that can result in sudden and severe hypertension and cerebral hemorrhage.\n• In patients who remain hypotensive after initial IM epinephrine, administer IV fluids. Have push-dose epinephrine ready for patients unresponsive to repeated IM epinephrine and IV fluids."],
+ ["Epinephrine (1:10,000)", "During CPR, epinephrine is administered to increase systemic vasomotor tone, thereby increasing diastolic blood pressure and coronary perfusion pressure."],
+ ["Epinephrine (1:100,000)", "• Administer slowly via IV and titrate to adequate perfusion.\n• Patients with anaphylaxis unresponsive to IM epinephrine and aggressive fluid resuscitation may benefit from push-dose epinephrine.\nMixing Instructions\n• Remove 1 mL normal saline (NS) from the 10 mL NS syringe\n• Add 1 mL of epinephrine 1:10,000 (0.1 mg/mL) to 9 mL NS syringe\n• The mixture now has 10 mL of epinephrine at 0.01 mg/mL (10 mcg/mL) concentration"],
+ ["Fentanyl", "• Remember to consider non-pharmacologic pain treatments, e.g., place in position of comfort, apply ice packs/splints PRN, and verbal reassurance.\n• Closely monitor respiratory status (including capnography) after administration.\n• An initial dose of 100 mcg IV or 50 mcg IN is well tolerated in most adults.\n• In opioid-naive or elderly patients, start with a lower dose. For elderly patients not taking opioids, 25 mcg is frequently sufficient for pain relief. Consider beginning with 25 mcg and titrating up in increments of 25 mcg to achieve pain relief without respiratory depression.\n• For pediatric patients >36 kg or longer than the LBRT, rather than administering the maximum dose, use weight-based dosing for both initial and repeat doses. It is acceptable to round doses (up or down) to the nearest 5 mcg."],
+ ["Glucagon", "• AEMT: Authorized to administer via IM only.\n• Use mixture immediately after reconstitution of dry powder.\n• Patient usually awakens from hypoglycemic coma in 5-20 minutes after glucagon injection. PO carbohydrates should be given as soon as possible after patient regains consciousness and is able to maintain airway.\n• Anticipate nausea/vomiting following administration of glucagon."],
+ ["Ipratropium Bromide", "• If concerned about aerosolized infectious exposure, substitute with MDI, if available.\n• Patients may need to be instructed on proper use of the MDI."],
+ ["Ketamine", "• Not authorized for sedation.\n• Not authorized for use in dissociative dose ranges. To reduce the risk for dissociative states, maximum total dose administered is not to exceed 60 mg IV or 100 mg IN.\n• Administration results in elevated heart rate and blood pressure. Do not administer to patients who cannot tolerate these changes in vital signs.\n• Rapid administration can result in respiratory and potentially cardiac arrest. Administer slowly.\n• Do not infuse with Ringer’s lactate solution."],
+ ["Lidocaine", "• If patient is in unstable ventricular tachycardia, synchronized cardioversion should be performed first.\n• Adult doses should be given in increments rounded (up or down) to the nearest 20 mg amount.\n• Lidocaine jelly may be applied to an ET tube for intubation or on a nasopharyngeal airway."],
+ ["Magnesium Sulfate", "• Magnesium sulfate is the antiseizure medication of choice in the setting of preeclampsia/eclampsia. The primary reason for administering magnesium sulfate is to prevent recurrent seizures (i.e., prophylaxis) rather than for control of the initial seizure, which is usually short in duration.\n• Preeclampsia is rare before 20 weeks gestation or after 48 hours post-delivery; however, may occur up to 6 weeks postpartum.\n• Headache or shortness of breath is frequently the presenting symptom of postpartum preeclampsia. Elevated blood pressure is an inconsistent finding.\n• Rarely, eclamptic seizures can present as focal or multifocal seizures.\n• Seizing patients at ≥20 weeks gestation or up to 6 weeks postpartum should be assumed to have eclampsia and treated accordingly.\n• Seizures consistent with other etiologies (e.g., hypoglycemia, alcohol withdrawal, known seizure history) should be treated in addition to eclampsia.\n• If the patient receives too much magnesium, this may result in magnesium toxicity. Symptoms of magnesium toxicity typically appear in this order: loss of deep tendon reflexes, respiratory paralysis, cardiac conduction changes (prolongation of PR, QRS, and QT intervals), then cardiac arrest. Calcium is the antidote and reverses magnesium toxicity.\n• Apply pacing pads to patients with second- or third-degree heart block requiring magnesium."],
+ ["Midazolam", "• Closely monitor respiratory status (including capnography) and cardiac function after administration.\n• Sedation prior to cardioversion is recommended. Consider a lower dose with attention to age and hydration status.\n• For severely agitated or combative patients, IN or IM administration is the preferred route to decrease risk of injury to the patient and personnel.\n• Administration in patients with alcohol intoxication can cause respiratory depression. Consider a lower dose or avoiding use."],
+ ["Morphine", "• Remember to consider non-pharmacologic pain treatments, e.g., place in position of comfort, apply ice packs/splints PRN, and verbal reassurance.\n• Closely monitor respiratory status (including capnography) after administration."],
+ ["Naloxone", "• EMT: Authorized to administer via IN only.\n• AEMT: Authorized to administer via IN/IM only.\n• Not authorized in cardiac arrest.\n• Titrate IV dose to maintain adequate respiratory drive; use only enough to reverse respiratory depression.\n• Duration of opioid effects may exceed that of naloxone; closely monitor patient’s respiratory status.\n• Naloxone may precipitate acute withdrawal symptoms or acute pulmonary edema when given to patients with opioid use disorder.\n• Administration can result in the sudden onset of opiate withdrawal (agitation, tachycardia, pulmonary edema, nausea, vomiting, and, in neonates, seizures)."],
+ ["Nitroglycerin", "• EMT: Authorized to assist patient to self-medicate own prescribed NTG only.\n• Examples of erectile dysfunction medications include sildenafil (Viagra), tadalafil (Cialis) and vardenafil (Levitra).\n• Examples of pulmonary hypertension medications include sildenafil (Revatio) and epoprostenol sodium (Flolan, Veletri).\n• Nitroglycerin is used primarily to provide pain relief from anginal chest discomfort.\n• Assess the patient and document vital signs, including pain scale, before and after each administration."],
+ ["Ondansetron", "• ECG changes include dose-dependent QT prolongation and ST-segment depression.\n• May cause serotonin syndrome if co-administered with selective serotonin reuptake inhibitors (SSRIs), e.g., fluoxetine, sertraline, citalopram, escitalopram, paroxetine."],
+ ["Sodium Bicarbonate", "• Monitor the patient closely for signs and symptoms of fluid overload. Because the buffering action produces carbon dioxide, ensure the patient has adequate airway and ventilatory support.\n• May precipitate or inactivate other medications; flush the IV line well before and after administering sodium bicarbonate. For example, precipitates to form calcium carbonate (chalk) when used with calcium chloride. Administer calcium chloride and sodium bicarbonate in separate IV/IO or thoroughly flush in between administrations using at least 10 mL of normal saline."],
+ ["Tranexamic Acid", "• Rapid infusion may cause hypotension; administer over 10 minutes.\n• Slow infusion rate if nausea, vomiting, or near syncope occurs.\n• May increase the risk of thromboembolic disorders."]
+];
+const CLASS_ALT={'Buprenorphine-Naloxone':[['partial opioid agonist','opioid partial agonist']]};
+const MOA_ALT={Aspirin:[['analgesic and antipyretic','antipyretic and analgesic']]};
+const BUILTIN=[
+ {id:'moa',title:'Learn every mechanism of action',short:'Mechanisms',ask:'Mechanism of Action',ph:'Type the full mechanism of action',unit:'cards',items:MOA.map(([d,a])=>Object.assign({d,a,nw:1,eff:1},MOA_ALT[d]?{alt:MOA_ALT[d]}:{}))},
+ {id:'class',title:'Learn every classification',short:'Classifications',ask:'Classification',hint:'Phrases in any order',ph:'Type the classification',unit:'drugs',items:CLASS.map(([d,a])=>Object.assign({d,a,any:1,phr:1},CLASS_ALT[d]?{alt:CLASS_ALT[d]}:{}))},
+ {id:'ind',title:'Learn every indication',short:'Indications',ask:'Indications',ph:'Type the indications',unit:'cards',items:IND.map(([d,a,p])=>({d,a,p,nw:1}))},
+ {id:'contra',title:'Learn every contraindication',short:'Contraindications',ask:'Contraindications',hint:'If none, write \u201cNone\u201d',ph:'Type the contraindications',unit:'drugs',items:CONTRA.map(([d,a,x])=>x?{d,a,none:1,nw:1}:{d,a,nw:1})},
+ {id:'dose',title:'Learn every adult dose',short:'Adult doses',ask:'Adult Dose',hint:'Type >= for \u2265 and <= for \u2264',ph:'Type the full adult dose',unit:'cards',items:DOSE.map(([d,a])=>({d,a}))},
+ {id:'peds',title:'Learn every pediatric dose',short:'Pediatric doses',ask:'Pediatric Dose',hint:'If not indicated for use in pediatrics, write \u201cNA\u201d. Type >= for \u2265 and <= for \u2264',ph:'Type the full pediatric dose',unit:'cards',items:PEDS.map(([d,a,x])=>x?{d,a,na:1}:{d,a})},
+ {id:'adv',title:'Learn every adverse effect',short:'Adverse effects',ask:'Adverse Effects',hint:'Any order',ph:'Type every adverse effect',unit:'drugs',items:ADV.map(([d,a,mn])=>({d,a,mn,any:1,lenient:1}))},
+ {id:'notes',title:'Learn every drug card note',short:'Notes',ask:'Notes',hint:'Bullets in any order',ph:'Type the notes',unit:'cards',items:NOTES.map(([d,a])=>({d,a,nw:1,any:1}))}
+];
+/*DATA-END*/
+
+/* ---------- Store ---------- */
+const LS='pdrill:v1';
+function freshStore(){ return {settings:{mode:'keys',auto:false,v:3,live:false,mnemView:'book'},progress:{},custom:[],mnem:{},mnemLast:{},updatedAt:0}; }
+function cleanStore(s){
+  const f=freshStore(); if(!s||typeof s!=='object') return f;
+  f.settings=Object.assign(f.settings,s.settings||{});
+  if(f.settings.prot===undefined) f.settings.prot=true;
+  if(f.settings.v!==3){ f.settings.mode='keys'; f.settings.v=3; ['moa','class','ind','dose'].forEach(k=>delete f.progress[k]); }
+  if(f.settings.mode!=='exact') f.settings.mode='keys';
+  f.progress=(s.progress&&typeof s.progress==='object')?s.progress:{};
+  f.custom=Array.isArray(s.custom)?s.custom.filter(d=>d&&d.id&&typeof d.src==='string'):[];
+  f.mnem=(s.mnem&&typeof s.mnem==='object')?s.mnem:{};
+  f.mnemLast=(s.mnemLast&&typeof s.mnemLast==='object')?s.mnemLast:{};
+  f.uid=typeof s.uid==='string'?s.uid:'';
+  f.updatedAt=+s.updatedAt||0; return f;
+}
+let store=freshStore();
+try{ store=cleanStore(JSON.parse(localStorage.getItem(LS)||'null')); }catch(e){}
+function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify(store)); }catch(e){} }
+function touch(){ store.updatedAt=Date.now(); persistLocal(); scheduleRemote(); }
+
+/* Account sync: Google sign-in (Firebase). Each person's progress is one private document, users/<uid>,
+   that only they can read or write. Without signing in, progress stays on this device. */
+let remote=null, fbAuth=null, fdb=null, fbUser=null, authReady=false, signErr='', syncErr='';
+let saveTimer=null, saving=false, again=false, retryTimer=null;
+const FBL=()=>window.FBLIB, FBC=()=>window.FIREBASE_CONFIG;
+const fbOn=()=>!!(FBL()&&FBC()&&FBC().apiKey);
+function clearRuns(){ try{ Object.keys(localStorage).filter(k=>k.startsWith('pdrill:run:')).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+function scheduleRemote(){ if(!remote) return; clearTimeout(saveTimer); saveTimer=setTimeout(flushRemote,1200); }
+async function flushRemote(){
+  clearTimeout(saveTimer); saveTimer=null;
+  if(!remote) return; if(saving){again=true;return;}
+  saving=true; const ref=remote;
+  try{ await FBL().setDoc(ref,JSON.parse(JSON.stringify(store))); if(syncErr){ syncErr=''; updateSync(); } }
+  catch(e){
+    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
+    updateSync(); clearTimeout(retryTimer); retryTimer=setTimeout(scheduleRemote,20000);
+  }
+  saving=false; if(again){again=false; flushRemote();}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&remote&&saveTimer) flushRemote(); });
+window.addEventListener('online',()=>{ if(remote&&syncErr) scheduleRemote(); else if(fbUser&&!remote) onUser(fbUser); });
+function initRemote(){
+  if(!fbOn()){ updateSync(); return; }
+  try{
+    const L=FBL(), app=L.initializeApp(FBC());
+    fbAuth=L.getAuth(app); fdb=L.getFirestore(app);
+    L.getRedirectResult(fbAuth).catch(e=>{ signErr=signInMsg(e); if(ui.screen==='home') render(); });
+    L.onAuthStateChanged(fbAuth,u=>{ authReady=true; onUser(u); });
+  }catch(e){ authReady=true; updateSync(); }
+}
+async function onUser(u){
+  fbUser=u||null; remote=null; clearTimeout(retryTimer);
+  if(!u){ updateSync(); if(ui.screen==='home') render(); return; }
+  signErr='';
+  const L=FBL(), ref=L.doc(fdb,'users',u.uid);
+  try{
+    const snap=await Promise.race([L.getDoc(ref),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),12000))]);
+    if(fbUser!==u) return;
+    const mine=store.uid===u.uid;
+    if(snap.exists()){
+      const d=cleanStore(JSON.parse(JSON.stringify(snap.data()||{})));
+      if(mine&&store.updatedAt>d.updatedAt){ remote=ref; scheduleRemote(); }
+      else if(!mine||d.updatedAt>store.updatedAt){
+        if(store.uid&&!mine) clearRuns();
+        store=d; store.uid=u.uid; persistLocal(); remote=ref;
+      } else remote=ref;
+    } else {
+      // First sign-in for this account: keep what's on this device unless it belongs to someone else.
+      if(store.uid&&!mine){ store=freshStore(); clearRuns(); }
+      store.uid=u.uid; if(!store.updatedAt) store.updatedAt=Date.now(); persistLocal();
+      remote=ref; flushRemote();
+    }
+    syncErr='';
+  }catch(e){
+    // Can't tell what's in the account yet, so don't overwrite it; try again shortly.
+    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
+    retryTimer=setTimeout(()=>{ if(fbUser===u) onUser(u); },20000);
+  }
+  updateSync(); if(ui.screen==='home') render();
+}
+function signInMsg(e){
+  const c=e&&e.code||'';
+  if(!c||c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'||c==='auth/user-cancelled') return '';
+  if(c==='auth/unauthorized-domain') return 'Sign-in isn’t set up for this web address yet.';
+  if(c==='auth/network-request-failed') return 'No connection. Try again when you’re online.';
+  return 'Couldn’t sign in ('+c.replace('auth/','')+'). Try again.';
+}
+async function doSignIn(){
+  if(!fbAuth) return;
+  const L=FBL(), p=new L.GoogleAuthProvider(); p.setCustomParameters({prompt:'select_account'});
+  signErr='';
+  try{ await L.signInWithPopup(fbAuth,p); }
+  catch(e){
+    const c=e&&e.code||'';
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'){
+      try{ await L.signInWithRedirect(fbAuth,p); return; }catch(e2){ signErr=signInMsg(e2); }
+    } else signErr=signInMsg(e);
+    if(ui.screen==='home') render();
+  }
+}
+async function doSignOut(){
+  if(!fbAuth) return;
+  if(remote) await flushRemote();
+  remote=null;
+  try{ await FBL().signOut(fbAuth); }catch(e){}
+  store=freshStore(); persistLocal(); clearRuns(); run=null; result=null;
+  ui.screen='home'; render();
+}
+function acctHTML(){
+  if(!fbOn()) return '';
+  if(!authReady) return '<section class="acct"><span class="acct-txt">Checking sign-in…</span></section>';
+  if(fbUser) return `<section class="acct"><span class="acct-txt">Saving to <b>${esc(fbUser.email||fbUser.displayName||'your Google account')}</b></span><button class="acct-btn" data-act="signout">Sign out</button></section>`;
+  return `<section class="acct"><span class="acct-txt">Sign in to save your progress to your Google account</span><button class="acct-btn primary" data-act="signin">Sign in with Google</button></section>${signErr?`<p class="acct-err">${esc(signErr)}</p>`:''}`;
+}
+function updateSync(){
+  const el=document.getElementById('syncNote'); if(!el) return;
+  el.textContent=syncErr?syncErr:(remote&&fbUser)?'Your progress saves automatically to your Google account.':'Your progress is saved on this device. Sign in to keep it on any device.';
+}
+
+/* ---------- Decks ---------- */
+function parseSrc(src){
+  const items=[]; let skipped=0;
+  String(src||'').split(/\r?\n/).forEach(line=>{
+    const t=line.trim(); if(!t||t.startsWith('#')) return;
+    let i=t.indexOf('::'), sep=2; if(i<0){ i=t.indexOf('\t'); sep=1; }
+    if(i<=0){ skipped++; return; }
+    const d=t.slice(0,i).trim(), a=t.slice(i+sep).trim();
+    if(!d||!a){ skipped++; return; }
+    items.push({d,a});
+  });
+  return {items,skipped};
+}
+function customDeck(c){ return {id:c.id,title:c.title,short:c.title,ask:c.ask||'Answer',ph:'Type the answer',unit:'cards',items:parseSrc(c.src).items,custom:true}; }
+const BY_ID={}; BUILTIN.forEach(d=>{ BY_ID[d.id]=d; d.items.forEach(it=>{ it.sec=d.id; }); });
+// Drug cards: every section of one P-115 card, in card order.
+const DRUGS=IND.map(r=>r[0]).slice().sort((x,y)=>x.localeCompare(y));
+const baseOf=n=>n.startsWith('Epinephrine')?'Epinephrine':n;
+const CARD_ORDER=['class','moa','ind','contra','dose','peds','adv','notes'];
+const CARD_CACHE=new Map();
+function cardDeck(name){
+  if(CARD_CACHE.has(name)) return CARD_CACHE.get(name);
+  const base=baseOf(name);
+  const pick=(id,d)=>BY_ID[id].items.filter(it=>it.d===d);
+  const items=[];
+  CARD_ORDER.forEach(id=>{
+    let got;
+    if(id==='moa'&&name==='Albuterol / Levalbuterol') got=pick('moa','Albuterol').concat(pick('moa','Levalbuterol'));
+    else if(['class','moa','contra','adv'].includes(id)) got=pick(id,base);
+    else got=pick(id,name);
+    got.forEach(it=>items.push(Object.assign({},it)));
+  });
+  const deck={id:'card:'+name,title:name,short:splitName(name).name,ask:'',ph:'Type the answer',unit:'sections',items,card:true,ordered:true};
+  CARD_CACHE.set(name,deck); return deck;
+}
+function decks(){ return BUILTIN.concat(store.custom.map(customDeck)); }
+function deckById(id){
+  if(id&&id.startsWith('card:')){ const n=id.slice(5); return DRUGS.includes(n)?cardDeck(n):null; }
+  return decks().find(d=>d.id===id)||null;
+}
+const secOf=(item,deck)=>(item.sec&&BY_ID[item.sec])||deck;
+function sig(deck){ let h=5381; const s=deck.items.map(i=>i.d+'\u0000'+(i.c||'')+'\u0000'+i.a).join('\u0001'); for(let i=0;i<s.length;i++) h=((h<<5)+h+s.charCodeAt(i))|0; return String(h); }
+
+/* ---------- Runs ---------- */
+const rk=id=>'pdrill:run:'+id;
+function loadRun(deck){ try{ const r=JSON.parse(localStorage.getItem(rk(deck.id))||'null'); if(r&&r.sig===sig(deck)&&r.cur!=null) return r; }catch(e){} return null; }
+function saveRun(){ if(run){ try{ localStorage.setItem(rk(run.deckId),JSON.stringify(run)); }catch(e){} } }
+function dropRun(id){ try{ localStorage.removeItem(rk(id)); }catch(e){} }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+const freshPres=()=>({missed:false,hinted:false,nw:null,redo:false,mn:false});
+function newRun(deck,subset){
+  const ids=subset?subset.slice():deck.items.map((_,i)=>i);
+  const q=deck.ordered?ids.slice():shuffle(ids.slice());
+  return {deckId:deck.id,sig:sig(deck),ids,queue:q.slice(1),cur:q[0],phase:'answer',cleared:[],missed:[],missCount:{},misses:0,firstTry:0,last:null,subset:!!subset,ordered:!!deck.ordered,startedAt:Date.now(),pres:freshPres()};
+}
+
+/* ---------- UI ---------- */
+const app=document.getElementById('app');
+let ui={screen:'home',deckId:null,editId:null,err:'',q:''};
+let run=null, result=null, armed=null, armTimer=null;
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function splitName(d){ const m=/^(.*?)\s*\(([^()]+)\)\s*$/.exec(d); return m?{name:m[1],sub:m[2]}:{name:d,sub:''}; }
+
+// Every deck and drug card:
+// - Before Learned the bar shows "x% learned": cards right the first time in your most recent full run.
+// - One perfect full run (no misses, nothing coming back) = Learned, and the mastery bar starts at 10%.
+//   Each perfect run in a row adds 10%; 10 in a row = Mastered. A failed run sets the mastery bar to 0%.
+// - A run fails at its first miss (counted right then, so restarting doesn't undo it). 2 failed runs in a row:
+//   Mastered drops to Learned (bar at 0%), Learned drops to 0. A perfect run in between clears the first strike.
+// - 169 hours without finishing a full run resets the deck to 0; the last 24 hours show a red countdown.
+const MASTER_RUNS=10, COUNTDOWN_FROM=3, FAIL_LIMIT=2;
+const RESET_MS=169*3600e3, WARN_MS=24*3600e3;
+function progOf(id){
+  const p=store.progress[id]||{};
+  const streak=p.streak!=null?p.streak:(p.runs&&p.lastMisses===0?1:0);
+  const mastered=!!p.mastered;
+  const learned=mastered||(p.learned!=null?!!p.learned:streak>=1);
+  let lastPct=p.lastPct;
+  if(lastPct==null&&p.runs){ const d=deckById(id); const n=d?d.items.length:0; lastPct=n?Math.max(0,Math.round((n-(p.lastMisses||0))/n*100)):0; }
+  return {streak,learned,mastered,strikes:p.strikes||0,runs:p.runs||0,lastMisses:p.lastMisses,lastPct:lastPct||0,lastAt:p.lastAt||0};
+}
+const hasProg=cp=>cp.learned||cp.mastered||cp.streak>0||cp.lastPct>0;
+// The stored record, with older saves filled in.
+function progRec(id){
+  const cp=progOf(id); const p=store.progress[id]||(store.progress[id]={runs:0,perfect:0});
+  p.streak=cp.streak; p.learned=cp.learned; p.mastered=cp.mastered; p.strikes=cp.strikes; p.lastPct=cp.lastPct; delete p.slips;
+  return p;
+}
+function failRun(p){
+  p.strikes=(p.strikes||0)+1; p.streak=0;
+  if(p.mastered){ if(p.strikes>=FAIL_LIMIT){ p.mastered=false; p.learned=true; p.strikes=0; } }
+  else if(p.learned){ if(p.strikes>=FAIL_LIMIT){ p.learned=false; p.strikes=0; } }
+  else p.strikes=0;
+}
+function decayAll(){
+  const now=Date.now(); let changed=false;
+  for(const id of Object.keys(store.progress)){
+    const cp=progOf(id); if(!hasProg(cp)) continue; const p=store.progress[id];
+    if(!cp.lastAt){ p.lastAt=now; changed=true; continue; }
+    if(now-cp.lastAt>=RESET_MS){ Object.assign(p,{learned:false,mastered:false,streak:0,strikes:0,lastPct:0,resetAt:now}); delete p.slips; changed=true; }
+  }
+  if(changed) touch();
+}
+const fmtLeft=ms=>{ const t=Math.max(0,Math.ceil(ms/1000)); const h=Math.floor(t/3600), m=Math.floor(t%3600/60), sec=t%60; return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`; };
+function timerHTML(id){
+  const cp=progOf(id); if(!hasProg(cp)||!cp.lastAt) return '';
+  const end=cp.lastAt+RESET_MS, left=end-Date.now(); if(left>WARN_MS||left<=0) return '';
+  return `<span class="reset-timer" data-end="${end}" title="Progress resets to 0 when this runs out. Finish a run to restart the clock."><span class="sr-only">Resets in </span>${fmtLeft(left)}</span>`;
+}
+setInterval(()=>{
+  const els=document.querySelectorAll('.reset-timer[data-end]'); if(!els.length) return; let expired=false;
+  els.forEach(el=>{ const left=+el.dataset.end-Date.now(); if(left<=0) expired=true; const v=el.lastChild; if(v) v.textContent=fmtLeft(left); });
+  if(expired&&(ui.screen==='home'||ui.screen==='cards')) render();
+},1000);
+function progStatus(deck){
+  const cp=progOf(deck.id); const r=loadRun(deck); const chips=[];
+  if(r) chips.push(`<span class="chip prog">In progress \u00b7 ${r.cleared.length}/${r.ids.length}${r.subset?' missed':''}</span>`);
+  if(cp.mastered) chips.push('<span class="chip gold">Mastered</span>');
+  else if(cp.learned){
+    chips.push('<span class="chip ok">Learned</span>');
+    const left=MASTER_RUNS-cp.streak;
+    if(left<=COUNTDOWN_FROM&&left>0) chips.push(`<span class="chip prog">${left} attempt${left===1?'':'s'} from mastery</span>`);
+  }
+  if(!cp.learned&&cp.lastPct>0&&cp.lastMisses>0) chips.push(`<span class="chip miss">Last run: ${cp.lastMisses} missed</span>`);
+  if(!r&&!cp.runs&&!cp.mastered) chips.push('<span class="chip">Not started</span>');
+  return chips.join('');
+}
+function progIcon(id){
+  return `<span class="dc-icon${progOf(id).mastered?' gold':''}" aria-hidden="true"></span>`;
+}
+const cardIcon=name=>progIcon('card:'+name);
+function status(deck){ return progStatus(deck); }
+
+function homeRow(deck){
+  return `<div class="row">
+    <button class="row-main row-icon" data-act="start" data-id="${esc(deck.id)}">${timerHTML(deck.id)}${progIcon(deck.id)}<span class="row-text">
+      <span class="row-title">${esc(deck.title)}</span>
+      <span class="row-meta">${deck.items.length} ${deck.unit} ${status(deck)}</span>
+    </span></button>
+    ${deck.custom?`<button class="row-side" data-act="edit" data-id="${esc(deck.id)}" aria-label="Edit ${esc(deck.title)}">Edit</button>`:''}
+    <button class="row-side" data-act="study" data-id="${esc(deck.id)}" aria-label="Review answers for ${esc(deck.title)}">Review</button>
+  </div>`;
+}
+
+function renderHome(){
+  const m=store.settings.mode;
+  const custom=store.custom.map(customDeck);
+  const mastered=DRUGS.filter(n=>progOf('card:'+n).mastered).length;
+  const sw1=(id,on,label,cap)=>`<label class="set-row"><span class="set-text"><span class="set-label">${label}</span>${cap?`<span class="set-cap">${cap}</span>`:''}</span><input type="checkbox" role="switch" id="${id}" ${on?'checked':''}></label>`;
+  app.innerHTML=`
+  <header class="hero">
+    <div class="hero-top"><span class="tag">San Diego County · P-115 · 2026</span><button class="about-btn" data-act="about">About</button></div>
+    <h1 class="title">Protocol Drill</h1>
+  </header>
+  ${acctHTML()}
+  <section class="set-card" aria-label="Settings">
+    ${sw1('exactHome',m==='exact','Word for word','Off: key words only')}
+    ${sw1('liveHome',store.settings.live,'Catch mistakes as I type','A warning counts as a miss')}
+    ${sw1('protHome',store.settings.prot!==false,'Ask for protocol numbers','On indication cards')}
+    ${sw1('auto',store.settings.auto,'Skip ahead after a correct answer','')}
+  </section>
+  <section>
+    <h2 class="sect">Drug cards</h2>
+    <div class="list"><div class="row"><button class="row-main" data-act="cards">
+      <span class="row-title">Learn a drug card</span>
+      <span class="row-meta">${DRUGS.length} cards · every section in order${mastered?` <span class="chip ok">${mastered} mastered</span>`:''}</span>
+    </button></div></div>
+  </section>
+  <section>
+    <h2 class="sect">Medication list</h2>
+    <div class="list">${BUILTIN.map(homeRow).join('')}</div>
+  </section>
+  <section>
+    <h2 class="sect">Your decks</h2>
+    <div class="list">
+      ${custom.length?custom.map(homeRow).join(''):'<p class="empty">Make a deck for any protocol: one card per line, key words in brackets.</p>'}
+      <div class="row"><button class="row-main" data-act="new"><span class="row-title">+ New deck</span><span class="row-meta">Paste or type your own cards</span></button></div>
+    </div>
+  </section>
+  <footer class="foot"><p id="syncNote"></p></footer>`;
+  updateSync();
+  document.getElementById('exactHome').addEventListener('change',e=>{ store.settings.mode=e.target.checked?'exact':'keys'; touch(); });
+  document.getElementById('auto').addEventListener('change',e=>{ store.settings.auto=e.target.checked; touch(); });
+  document.getElementById('liveHome').addEventListener('change',e=>{ store.settings.live=e.target.checked; touch(); });
+  document.getElementById('protHome').addEventListener('change',e=>{ store.settings.prot=e.target.checked; touch(); });
+}
+
+/* Drug card list */
+function cardRows(q){
+  const t=q.trim().toLowerCase();
+  const list=DRUGS.filter(n=>!t||n.toLowerCase().includes(t));
+  if(!list.length) return `<p class="empty">No drug matches “${esc(q)}”.</p>`;
+  return list.map(n=>{ const d=cardDeck(n); return `<div class="row">
+    <button class="row-main row-icon" data-act="start" data-id="${esc(d.id)}">${timerHTML(d.id)}${cardIcon(n)}<span class="row-text"><span class="row-title">${esc(n)}</span><span class="row-meta">${d.items.length} sections ${status(d)}</span></span></button>
+    <button class="row-side" data-act="study" data-id="${esc(d.id)}" aria-label="Review the ${esc(n)} card">Review</button>
+  </div>`; }).join('');
+}
+function renderCards(){
+  app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">${DRUGS.length} cards</div></div>
+  <h1 class="h-res">Learn a drug card</h1>
+  <p class="lede">Every section of one card, in order: classification, mechanism, indications, contraindications, adult and pediatric doses, adverse effects and notes. Miss a section and you redo it on the spot; it also comes back later.</p>
+  <label for="cardSearch" class="sr-only">Search drugs</label>
+  <input type="text" id="cardSearch" class="search" placeholder="Search drugs" value="${esc(ui.q||'')}" autocomplete="off" autocorrect="off" spellcheck="false">
+  <div class="list" id="cardList">${cardRows(ui.q||'')}</div>`;
+  const s=document.getElementById('cardSearch');
+  s.addEventListener('input',()=>{ ui.q=s.value; document.getElementById('cardList').innerHTML=cardRows(ui.q); });
+}
+
+/* Drill */
+let ans=null;
+const protEl=()=>document.getElementById('prot');
+const needProt=item=>!!item.p&&store.settings.prot!==false;
+function curDeck(){ return deckById(run.deckId); }
+function curItem(){ return curDeck().items[run.cur]; }
+function pres(){ if(!run.pres) run.pres=freshPres(); return run.pres; }
+// What's typed in the boxes is saved with the run, so leaving the drill and coming back picks up the same text
+// (and a revealed next word still fits it). A draft only comes back for the same card and step it was typed on.
+const draftKey=()=>[run.cur,run.phase,(run.fix&&run.fix.i)||0,pres().redo?1:0].join('|');
+function syncDraft(){
+  if(!run||!ans||!ans.isConnected) return;
+  const pe=protEl(); run.draft={k:draftKey(),a:ans.value,p:pe?pe.value:''};
+}
+
+function renderDrill(){
+  const deck=curDeck();
+  app.innerHTML=`
+  <div class="topbar">
+    <button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button>
+    <div class="tb-right"><span>${esc(deck.short)}</span><button class="tb-btn" id="restartBtn" data-act="restart">Restart</button></div>
+  </div>
+  <div class="progress">
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="bar-txt"><span id="barTxt"></span><span id="missTxt"></span></div>
+  </div>
+  <article class="card" aria-live="polite">
+    <div class="holes"></div>
+    <div class="card-body">
+      <div class="ask" id="ask"></div>
+      <h2 class="drug" id="drug"></h2>
+      <div class="sub" id="sub"></div>
+      <div class="ctx" id="ctx"></div>
+      <div class="card-hint" id="cardHint" hidden></div>
+      <div class="card-foot"><span id="revisit"></span><span class="lbl" id="lbl"></span></div>
+    </div>
+  </article>
+  <div class="tools" id="tools">
+    <button class="btn small" id="mnBtn" data-act="mnem" hidden>Show mnemonic</button>
+  </div>
+  <div id="mnPanel" class="mn-panel" hidden></div>
+  <div id="fb"></div>
+  <label for="ans" class="sr-only">Your answer</label>
+  <textarea id="ans" rows="3" autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="send"></textarea>
+  <p class="live-warn" id="liveWarn" hidden>Something’s off…</p>
+  <p class="nw-hint" id="nwHint" hidden></p>
+  <div class="prot-row" id="protRow" hidden><label for="prot">Protocols:</label><input type="text" id="prot" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="send"></div>
+  <div class="actions">
+    <button class="btn primary" id="go" data-act="go">Check</button>
+    <button class="btn" id="reveal" data-act="reveal">Show answer</button>
+    <button class="btn" id="nwBtn" data-act="nextword" hidden>Show next word <span class="cost">counts as a miss</span></button>
+  </div>
+  <div class="switches">
+    <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Catch mistakes as I type <span class="cost">a warning counts as a miss</span></span></label>
+    <label class="switch-row" id="protSwitchRow" hidden><input type="checkbox" role="switch" id="protSwitch"> <span>Ask for protocol numbers</span></label>
+  </div>
+  <p class="hint">Enter submits. Shift+Enter adds a new line.</p>`;
+  ans=document.getElementById('ans');
+  if(run.draft&&run.draft.k===draftKey()){ ans.value=run.draft.a||''; protEl().value=run.draft.p||''; }
+  ans.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||e.shiftKey||e.isComposing) return; e.preventDefault();
+    const it=curItem(), pe=protEl();
+    if(needProt(it)&&run.phase==='answer'&&!pe.value.trim()){ pe.focus(); return; }
+    primary();
+  });
+  ans.addEventListener('input',onType);
+  protEl().addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); primary(); } });
+  protEl().addEventListener('input',()=>{ if(!run) return; syncDraft(); saveRun(); if(run.phase==='retype') paintFeedback(); });
+  document.getElementById('protSwitch').addEventListener('change',e=>{ store.settings.prot=e.target.checked; touch(); if(run.fix) run.fix=normFix(run.fix); saveRun(); paint(); });
+  document.getElementById('liveSwitch').addEventListener('change',e=>{ store.settings.live=e.target.checked; touch(); paintLive(); });
+  paint();
+  setTimeout(()=>{ try{ ans.focus({preventScroll:true}); const n=ans.value.length; ans.setSelectionRange(n,n); }catch(e){} },30);
+}
+
+// bold: the answer at the top while you retype a part below it; mistakes are bold there, and only the part you retype is highlighted.
+function answerHTML(item,g,bold){
+  const xt=l=>bold?`<b class="xb">+${esc(l)}</b>`:`<span class="w miss xtra">+${esc(l)}</span>`;
+  const word=p=>{
+    const bad=(p.req&&!p.ok)||p.bad;
+    const w=bad?(bold?`<b class="xb">${esc(p.w)}</b>`:`<span class="w miss">${esc(p.w)}</span>`):p.ord&&!bold?`<span class="w ord">${esc(p.w)}</span>`:esc(p.w);
+    return (p.px?p.px.map(xt).join(' ')+' ':'')+w+(p.x?' '+p.x.map(xt).join(' '):'');
+  };
+  return g.res.map(r=>{
+    if(r.k) return bold?`<mark class="k${r.ok?' ok':''}">${esc(r.disp)}</mark>`:`<mark class="k ${r.ok?'ok':'miss'}">${esc(r.disp)}</mark>`;
+    if(r.parts) return r.parts.map(word).join('');
+    return esc(r.text);
+  }).join('');
+}
+
+function normFix(f){
+  if(!f||f.full) return {targets:[{kind:'full'}],i:0};
+  let t=f.targets.map(t=>t.kind?t:{kind:'part',text:t.text});
+  if(run&&!needProt(curItem())) t=t.filter(x=>x.kind!=='prot');
+  if(!t.length) t=[{kind:'full'}];
+  return {targets:t,i:Math.min(f.i||0,t.length-1)};
+}
+function protHTML(item,res,bold){
+  const miss=new Set(res?res.missing:[]);
+  const xs=(res&&res.extra||[]).map(x=>bold?`<b class="xb">+${esc(x)}</b>`:`<span class="w miss xtra">+${esc(x)}</span>`);
+  return item.p.map(s=>miss.has(s)?(bold?`<b class="nw xb">${esc(s)}</b>`:`<span class="nw w miss">${esc(s)}</span>`):`<span class="nw">${esc(s)}</span>`).concat(xs).join(', ');
+}
+// Typing from memory: the first answer, a redo after a miss, or a restart after being stopped.
+const fromMemory=()=>run.phase==='answer'||(run.phase==='retype'&&normFix(run.fix).targets[normFix(run.fix).i].kind==='memory');
+
+/* Catch mistakes as you type */
+function onType(){
+  if(!run) return;
+  syncDraft(); saveRun();
+  if(run.phase==='retype'&&!fromMemory()){ paintFeedback(); return; }
+  paintLive();
+}
+function paintLive(){
+  const w=document.getElementById('liveWarn'); if(!w) return;
+  const on=!!store.settings.live&&fromMemory();
+  if(!on){ w.hidden=true; ans.classList.remove('warnb'); return; }
+  const lc=liveCheck(curItem(),ans.value,store.settings.mode);
+  if(lc.state==='stop'){ liveStop(lc); return; }
+  // Only a warning that actually shows makes the card a miss; a clean answer with the switch on still counts.
+  if(lc.state==='warn'&&run.phase==='answer'&&!pres().assisted){ pres().assisted=true; saveRun(); }
+  w.hidden=lc.state!=='warn'; ans.classList.toggle('warnb',lc.state==='warn');
+}
+function liveStop(lc){
+  countMiss(); pres().nw=null;
+  const keep=ans.value.slice(0,lc.cut).replace(/\s+$/,'');
+  run.phase='retype'; run.retried=false;
+  run.fix={targets:[{kind:'memory'}],i:0};
+  run.last={text:ans.value,missing:[],prot:protEl().value,stop:lc.msg,kept:!!keep};
+  ans.value=keep?keep+' ':''; saveRun(); paint(); shake(ans);
+  try{ ans.focus({preventScroll:true}); ans.setSelectionRange(ans.value.length,ans.value.length); }catch(e){}
+  const fb=document.getElementById('fb'); if(fb&&fb.scrollIntoView) fb.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+/* Mnemonic panel (adverse effects) */
+function mnView(item){
+  const p=pres(); if(p.mnView) return p.mnView;
+  const mine=store.mnem&&store.mnem[item.d]; const last=store.mnemLast&&store.mnemLast[item.d];
+  if(last&&(last!=='mine'||mine)) return last;   // the view you last used for this drug
+  return mine?'mine':(store.settings.mnemView||'book');
+}
+function rememberView(d,v){ store.mnemLast=store.mnemLast||{}; if(v==null){ if(d in store.mnemLast){ delete store.mnemLast[d]; touch(); } return; } if(store.mnemLast[d]!==v){ store.mnemLast[d]=v; touch(); } }
+// Adverse effects are shown in the order of the mnemonic view in use (grading is any order either way).
+function shownItem(item){
+  if(!item.mn) return item;
+  const list=mnemonicOrder(item.mn,mnView(item),store.mnem&&store.mnem[item.d]);
+  return list.join('\n')===item.mn.join('\n')?item:Object.assign({},item,{a:'\u2022 '+list.join('\n\u2022 ')});
+}
+function paintMnem(){
+  const panel=document.getElementById('mnPanel'); const item=curItem();
+  if(!item.mn||!pres().mn||run.phase!=='answer'){ panel.hidden=true; panel.innerHTML=''; return; }
+  const v=mnView(item); const mine=(store.mnem&&store.mnem[item.d])||'';
+  const tab=(k,l)=>`<button role="radio" aria-checked="${v===k}" data-act="mnview" data-v="${k}">${l}</button>`;
+  let body;
+  if(v==='mine'&&mine&&!pres().mnEdit) body=`<p class="mn-text">${esc(mine)}</p><button class="link" data-act="mnedit">Edit my mnemonic</button>`;
+  else if(v==='mine') body=`<label for="mnInput" class="sr-only">Your mnemonic</label><input type="text" id="mnInput" value="${esc(mine)}" placeholder="Write a mnemonic that helps you" autocomplete="off"><div class="actions"><button class="btn small" data-act="mnsave">Save mnemonic</button>${mine?'<button class="btn small" data-act="mndelete">Delete</button>':''}</div>`;
+  else body=`<p class="mn-letters">${esc(mnemonicLetters(item.mn,v==='az'))}</p><p class="fb-small">${item.mn.length} adverse effect${item.mn.length===1?'':'s'}, first letter of each${v==='az'?', A–Z':', in book order'}.</p>`;
+  panel.innerHTML=`<div class="seg small" role="radiogroup" aria-label="Mnemonic view">${tab('book','Book order')}${tab('az','A–Z')}${tab('mine','Mine')}</div>${body}`;
+  panel.hidden=false;
+}
+
+function paintFeedback(){
+  const fb=document.getElementById('fb'); const item=curItem(); const mode=store.settings.mode;
+  const note=item.n?`<p class="fb-note">${esc(item.n)}</p>`:'';
+  const p=pres();
+  if(run.phase==='answer'){
+    fb.innerHTML=p.redo?`<div class="fb redo"><div class="fb-head">Now from memory</div><p class="fb-small">Type the whole answer again without looking. It still comes back later in this card.</p></div>`:'';
+    return;
+  }
+  if(run.phase==='correct'){
+    const g=gradeItem(item,run.last.text,mode);
+    const ord=g.order&&g.order.length?`<p class="fb-order"><b>Watch the word order.</b> P-115 says: ${g.order.map(o=>'“'+esc(o)+'”').join(', ')}</p>`:'';
+    const prot=item.p?`<p class="fb-prot"><b>Protocols:</b> ${esc(item.p.join(', '))}</p>`:'';
+    const hinted=run.last.hinted, assisted=run.last.assisted;
+    const head=hinted?'Correct, with a hint':assisted?'Correct, assisted':ord?'Correct, but check the order':'Correct';
+    const assistNote=assisted&&!hinted?'<p class="fb-small">You got a \u201cSomething\u2019s off\u2026\u201d warning on this card, so it counts as a miss. Cards only count when you answer without one.</p>':'';
+    const hk=run.last.hintKind; const used=hk==='mnemonic'?'the mnemonic':hk==='both'?'the mnemonic and “Show next word”':'“Show next word”';
+    const hintNote=hinted?`<p class="fb-small">You used ${used}, so this counts as a miss and comes back later.${run.redoNext?' Next: type it once more from memory.':''}</p>`:'';
+    const si=shownItem(item);
+    fb.innerHTML=`<div class="fb ${hinted||assisted?'redo':'ok'}"><div class="fb-head">${head}</div><p class="fb-ans">${si===item?answerHTML(item,g):answerHTML(si,gradeItem(si,run.last.text,mode))}</p>${prot}${ord}${hintNote}${assistNote}${note}</div>`;
+    return;
+  }
+  const fx=normFix(run.fix); const cur=fx.targets[fx.i];
+  if(cur.kind==='memory'){
+    const live=ans&&ans.value.trim()?ans.value:'';
+    fb.innerHTML=`<div class="fb miss"><div class="fb-head">Stopped</div><p class="fb-ans">${esc(run.last.stop||'')}</p><p class="fb-small"><b>${run.last.kept?'Pick up from the start of that sentence, from memory.':'Start over from the beginning, from memory.'}</b> This counts as a miss and the card comes back later.</p>${live?'':''}</div>`;
+    return;
+  }
+  const typed=!!(run.last.text.trim()||(run.last.prot||'').trim());
+  const lg=gradeItem(item,run.last.text,mode);
+  const mainN=lg.pass?0:(lg.special?1:Math.max(1,(lg.mistakes||[]).length));
+  const protWrong=fx.targets.some(t=>t.kind==='prot')&&typed;
+  const n=mainN+(protWrong?1:0);
+  const live=ans&&!ans.readOnly&&ans.value.trim()?ans.value:'';
+  const shown=cur.kind==='full'&&live?gradeItem(item,live,mode):lg;
+  let head='Answer';
+  if(typed){
+    const what=fx.targets.length>1?'fix each part in turn':cur.kind==='part'?'fix just this part':cur.kind==='prot'?'fix the protocols':'retype the whole answer';
+    head=`${n===1?'1 mistake':n+' mistakes'}: ${what}`;
+  }
+  const mainMissing=run.last.text.trim()&&!lg.pass?lg.missing:[];
+  const pr=needProt(item)&&typed?gradeProt(item.p,run.last.prot||''):null;
+  const protMissing=pr&&!pr.pass?[pr.missing.length?`${pr.missing.length} protocol${pr.missing.length===1?'':'s'} missing`:'',pr.extra.length?`extra protocol ${pr.extra.join(', ')}`:''].filter(Boolean):[];
+  const allMissing=mainMissing.concat(protMissing);
+  const list=allMissing.length?`<p class="fb-small">Missing or wrong: ${esc(allMissing.slice(0,10).join(', '))}${allMissing.length>10?'…':''}</p>`:'';
+  const you=run.last.text.trim()?`<p class="fb-small">You wrote: ${esc(run.last.text)}${needProt(item)?` · Protocols: ${esc(run.last.prot||'')}`:''}</p>`:'';
+  const over=typed&&!run.retried?`<button class="link" data-act="override">Count my answer as correct (the grader missed a synonym)</button>`:'';
+  const ordMiss=run.last.text.trim()&&lg.orderFail&&lg.order&&lg.order.length?`<p class="fb-order"><b>Out of order.</b> P-115 says: ${lg.order.map(o=>'“'+esc(o)+'”').join(', ')}</p>`:'';
+  const top=cur.kind!=='full';   // retyping just a part or the protocols: that box is highlighted, the full answer above is bold
+  const protLine=item.p?`<p class="fb-prot"><b>Protocols:</b> ${protHTML(item,pr,top)}</p>`:'';
+  const step=fx.targets.length>1?` part ${fx.i+1} of ${fx.targets.length}`:'';
+  const redoNote=curDeck().card?'<p class="fb-small">After this, you’ll type the whole section once more from memory.</p>':'';
+  let task;
+  if(cur.kind==='part'){
+    const tg=grade(cur.text,live||run.last.text,mode,optsOf(item));
+    task=`<div class="fix"><div class="fix-label">Retype${step}</div><p class="fix-text">${answerHTML({a:cur.text},tg)}</p></div>`;
+  } else if(cur.kind==='prot'){
+    task=`<div class="fix"><div class="fix-label">Retype protocols${step}</div><p class="fix-text">${protHTML(item,gradeProt(item.p,protEl().value||''))}</p><p class="fb-small">Numbers only is fine.</p></div>`;
+  } else task=`<p class="fb-small"><b>Type the whole answer to continue${step?` (${step.trim()})`:''}.</b></p>`;
+  const si=shownItem(item); const shownHTML=si===item?answerHTML(item,shown,top):answerHTML(si,gradeItem(si,cur.kind==='full'&&live?live:run.last.text,mode),top);
+  // After a Check that didn't pass: say what's still wrong (it's also marked in the text).
+  let still='';
+  if(p.fail){
+    let why=[];
+    if(cur.kind==='prot'){ const g2=gradeProt(item.p,protEl().value||''); if(!g2.pass) why=g2.missing.map(x=>x+' missing').concat(g2.extra.map(x=>'extra '+x)); if(!g2.pass&&!why.length) why=['type the protocol numbers']; }
+    else { const tx=ans.value; const g2=cur.kind==='part'?grade(cur.text,tx,mode,optsOf(item)):gradeItem(item,tx,mode); if(!g2.pass) why=g2.missing.length?g2.missing:['check the highlighted words']; }
+    if(why.length) still=`<p class="fb-still">Still not right: ${esc(why.slice(0,10).join(', '))}${why.length>10?'…':''}</p>`;
+  }
+  if(still&&cur.kind!=='full') task=task.replace(/<\/div>$/,still+'</div>'), still='';
+  fb.innerHTML=`<div class="fb miss"><div class="fb-head">${head}</div>${list}<p class="fb-ans">${shownHTML}</p>${still}${protLine}${ordMiss}${you}${note}${task}${redoNote}${over}</div>`;
+}
+
+function paint(){
+  const deck=curDeck(); const item=curItem(); const sd=secOf(item,deck); const total=run.ids.length; const p=pres();
+  document.getElementById('barFill').style.width=(run.cleared.length/total*100)+'%';
+  document.getElementById('barTxt').innerHTML=`<b>${run.cleared.length}</b> of ${total} ${deck.card?'sections ':''}cleared`;
+  document.getElementById('missTxt').textContent=`${run.misses} missed`;
+  const title=deck.card?deck.title:item.d;
+  const nm=splitName(title);
+  const drug=document.getElementById('drug');
+  if(deck.card){
+    // Drug cards: you picked the drug, so the section is the big title and the drug sits small above it.
+    document.getElementById('ask').textContent=`${nm.name}${nm.sub?' ('+nm.sub+')':''} · ${run.cur+1} of ${deck.items.length}`;
+    drug.textContent=sd.ask;
+    drug.className='drug'+(sd.ask.length>22||sd.ask.split(' ').some(w=>w.length>14)?' long':'');
+    document.getElementById('sub').textContent=item.d!==title&&!/\(/.test(title)?item.d:'';
+  } else {
+    document.getElementById('ask').textContent=sd.ask;
+    drug.textContent=nm.name;
+    drug.className='drug'+(deck.custom?' custom':'')+(nm.name.length>22?' long':'');
+    document.getElementById('sub').textContent=nm.sub;
+  }
+  document.getElementById('ctx').textContent=item.c||'';
+  const hint=document.getElementById('cardHint'); hint.textContent=sd.hint||''; hint.hidden=!sd.hint;
+  document.getElementById('revisit').innerHTML=run.phase!=='retype'&&run.missCount[run.cur]&&!p.redo?'<span class="chip miss">Missed earlier</span>':'';
+  document.getElementById('lbl').textContent='';
+  const pe=protEl(); document.getElementById('protRow').hidden=!needProt(item);
+  document.getElementById('protSwitchRow').hidden=!item.p; document.getElementById('protSwitch').checked=store.settings.prot!==false;
+  document.getElementById('liveSwitch').checked=!!store.settings.live;
+  // tools: mnemonic (adverse effects) and next word (mechanism, indications, contraindications, notes)
+  const answering=run.phase==='answer';
+  const mnBtn=document.getElementById('mnBtn'); mnBtn.hidden=!item.mn||!answering||p.redo; mnBtn.innerHTML=p.mn?'Hide mnemonic':`Show mnemonic${p.hinted?'':' <span class="cost">counts as a miss</span>'}`;
+  const nwBtn=document.getElementById('nwBtn'); nwBtn.hidden=!item.nw||!fromMemory(); nwBtn.disabled=!!p.nw;
+  document.getElementById('tools').hidden=mnBtn.hidden;
+  const nwh=document.getElementById('nwHint'); nwh.hidden=!(p.nw&&fromMemory()); if(p.nw) nwh.innerHTML=`Next word: <b>${esc(p.nw)}</b>`;
+  paintMnem();
+  const go=document.getElementById('go'), rv=document.getElementById('reveal');
+  ans.readOnly=false; pe.readOnly=false;
+  if(run.phase==='answer'){ go.textContent='Check'; rv.hidden=false; ans.placeholder=p.redo?'Type it again from memory':sd.ph; pe.placeholder='S-numbers, or just the numbers'; }
+  else if(run.phase==='correct'){ go.textContent=run.redoNext?'Type it from memory':run.queue.length?'Next card':'Finish run'; rv.hidden=true; }
+  else {
+    const fx=normFix(run.fix); const k=fx.targets[fx.i].kind;
+    go.textContent='Check'; rv.hidden=k!=='memory';
+    ans.readOnly=(k==='prot'); pe.readOnly=!(k==='prot'||k==='memory');
+    ans.placeholder=k==='part'?'Type the part in the dashed box':k==='full'?'Type the whole answer above':k==='memory'?'Keep going from memory':'Answer done';
+    pe.placeholder=k==='prot'?'Type the protocols in the dashed box':'';
+  }
+  ans.classList.remove('good','shake'); pe.classList.remove('good','shake');
+  syncDraft(); saveRun();
+  paintFeedback(); paintLive();
+}
+
+function focusActive(){
+  try{
+    const pe=protEl();
+    if(run&&run.phase==='retype'&&normFix(run.fix).targets[normFix(run.fix).i].kind==='prot') pe.focus({preventScroll:true});
+    else ans.focus({preventScroll:true});
+  }catch(e){}
+}
+
+// One miss per time a card is shown, however many corrections it takes.
+// requeue=false: counted as a miss but not shown again (cards answered with "Catch mistakes as I type" on).
+function countMiss(requeue){
+  const p=pres(); if(p.missed) return;
+  const id=run.cur;
+  run.misses++; run.missCount[id]=(run.missCount[id]||0)+1;
+  if(!run.missed.includes(id)) run.missed.push(id);
+  if(requeue!==false&&!run.queue.includes(id)){
+    const k=run.ordered?Math.min(run.queue.length,2):Math.min(run.queue.length,3+Math.floor(Math.random()*3));
+    run.queue.splice(k,0,id);
+  }
+  p.missed=true;
+  // The run has failed: count it now, once, so quitting or restarting doesn't dodge it. Drilling just the missed cards doesn't count.
+  if(!run.subset&&!run.struck){
+    const pr=progRec(run.deckId);
+    run.progBefore={streak:pr.streak,learned:pr.learned,mastered:pr.mastered,strikes:pr.strikes};
+    failRun(pr); run.struck=true;
+  }
+  touch();
+}
+
+function primary(){
+  if(!run) return;
+  if(run.phase==='correct'){ advance(); return; }
+  const item=curItem(); const text=ans.value; const pv=protEl().value; const mode=store.settings.mode; const p=pres();
+  const memory=fromMemory();
+  if(memory){
+    if(!text.trim()){ shake(ans); return; }
+    if(needProt(item)&&!pv.trim()){ shake(protEl()); protEl().focus(); return; }
+    const g=gradeItem(item,text,mode); const pg=needProt(item)?gradeProt(item.p,pv):null;
+    if(g.pass&&(!pg||pg.pass)){
+      if(p.hinted){
+        countMiss();
+        run.redoNext=curDeck().card&&!p.redo;
+        run.phase='correct'; run.last={text,prot:pv,hinted:true,hintKind:p.hintKind};
+        saveRun(); paint(); ans.classList.add('good');
+        return;
+      }
+      if(p.assisted){
+        countMiss(false);
+        if(!run.queue.includes(run.cur)&&!run.cleared.includes(run.cur)) run.cleared.push(run.cur);
+        run.redoNext=false; run.phase='correct'; run.last={text,prot:pv,assisted:true};
+        saveRun(); paint(); ans.classList.add('good');
+        if(store.settings.auto) setTimeout(()=>{ if(run&&run.phase==='correct') advance(); },650);
+        return;
+      }
+      if(!run.missCount[run.cur]) run.firstTry++;
+      if(!run.queue.includes(run.cur)&&!run.cleared.includes(run.cur)) run.cleared.push(run.cur);
+      run.phase='correct'; run.last={text,prot:pv};
+      saveRun(); paint();
+      ans.classList.add('good');
+      if(store.settings.auto&&!(g.order&&g.order.length)) setTimeout(()=>{ if(run&&run.phase==='correct') advance(); },650);
+    } else miss(text,g,pv,pg);
+    return;
+  }
+  // retype: one step at a time
+  run.retried=true;
+  const fx=normFix(run.fix); const t=fx.targets[fx.i];
+  const ok=t.kind==='prot'?gradeProt(item.p,pv).pass:t.kind==='part'?grade(t.text,text,mode,optsOf(item)).pass:gradeItem(item,text,mode).pass;
+  const el=t.kind==='prot'?protEl():ans;
+  if(ok){
+    el.classList.add('good');
+    if(fx.i<fx.targets.length-1){ fx.i++; run.fix=fx; p.fail=false; saveRun(); setTimeout(()=>{ if(t.kind!=='prot') ans.value=''; paint(); focusActive(); },300); }
+    else if(curDeck().card&&!p.redo){ saveRun(); setTimeout(redo,350); }
+    else { saveRun(); setTimeout(advance,350); }
+  } else { p.fail=true; saveRun(); paintFeedback(); shake(el); }
+}
+
+// Drug cards: after a miss, type the section once more from memory before moving on.
+function redo(){
+  run.phase='answer'; run.fix=null; run.last=null; run.retried=false; run.redoNext=false;
+  const keep=pres().missed; run.pres=freshPres(); run.pres.redo=true; run.pres.missed=keep;
+  saveRun(); ans.value=''; protEl().value=''; paint(); focusActive();
+}
+
+function miss(text,g,pv,pg){
+  const item=curItem();
+  const targets=[];
+  if(!g||!g.pass){
+    if(text.trim()&&g&&!g.special&&g.mistakes&&g.mistakes.length&&g.mistakes.length<3){
+      const t=fixTargets(item.a,g,optsOf(item)); if(t.length) t.forEach(x=>targets.push({kind:'part',text:x.text})); else targets.push({kind:'full'});
+    } else targets.push({kind:'full'});
+  }
+  if(needProt(item)&&(!pg||!pg.pass)) targets.push({kind:'prot'});
+  run.fix={targets,i:0}; pres().fail=false;
+  countMiss();
+  run.phase='retype'; run.retried=false; run.last={text,missing:g?g.missing:[],prot:pv||''};
+  if(targets[0].kind!=='prot') ans.value='';
+  if(targets.some(t=>t.kind==='prot')) protEl().value='';
+  saveRun(); paint(); shake(targets[0].kind==='prot'?protEl():ans); focusActive();
+  const fb=document.getElementById('fb'); if(fb&&fb.scrollIntoView) fb.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+function override(){
+  const id=run.cur; const p=pres();
+  if(p.missed){
+    const qi=run.queue.indexOf(id); if(qi>=0) run.queue.splice(qi,1);
+    run.misses--; run.missCount[id]--;
+    if(!run.missCount[id]){ delete run.missCount[id]; run.missed=run.missed.filter(x=>x!==id); run.firstTry++; }
+    p.missed=false;
+    // Marked right after all: if that was the run's only miss, the run hasn't failed after all.
+    const pr=store.progress[run.deckId], pb=run.progBefore;
+    if(pr&&pb&&run.misses===0){
+      pr.streak=pb.streak; pr.mastered=!!pb.mastered; if(pb.learned!=null) pr.learned=pb.learned; if(pb.strikes!=null) pr.strikes=pb.strikes;
+      delete pr.slips; run.progBefore=null; run.struck=false; touch();
+    }
+  }
+  if(!run.queue.includes(id)&&!run.cleared.includes(id)) run.cleared.push(id);
+  run.phase='correct'; run.redoNext=false; run.last.hinted=false;
+  saveRun(); ans.value=run.last.text; protEl().value=run.last.prot||''; paint();
+}
+
+function advance(){
+  if(!run) return;
+  if(run.redoNext){ redo(); return; }
+  if(!run.queue.length){ finish(); return; }
+  run.cur=run.queue.shift(); run.phase='answer'; run.last=null; run.retried=false; run.fix=null; run.pres=freshPres();
+  saveRun(); ans.value=''; protEl().value=''; paint();
+  try{ ans.focus({preventScroll:true}); }catch(e){}
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function shake(el){ el=el||ans; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+function finish(){
+  const deck=curDeck();
+  result={deckId:deck.id,total:run.ids.length,firstTry:run.firstTry,misses:run.misses,missed:run.missed.slice(),subset:run.subset};
+  if(!run.subset){
+    const p=progRec(deck.id);
+    p.runs=(p.runs||0)+1; if(result.misses===0) p.perfect=(p.perfect||0)+1;
+    p.lastMisses=result.misses; p.best=p.best==null?result.misses:Math.min(p.best,result.misses); p.lastAt=Date.now();
+    p.lastPct=Math.round(run.firstTry/run.ids.length*100);
+    if(result.misses===0){
+      const was=p.learned; p.strikes=0; p.streak=(p.streak||0)+1; p.learned=true;
+      if(!was) result.newlyLearned=true;
+      if(p.streak>=MASTER_RUNS&&!p.mastered){ p.mastered=true; p.masteredAt=Date.now(); result.newlyMastered=true; }
+    } else if(!run.struck) failRun(p);
+    result.prog=progOf(deck.id); touch();
+  }
+  dropRun(deck.id); run=null;
+  ui.screen='results'; ui.deckId=deck.id; render(); window.scrollTo({top:0});
+}
+
+function itemLabel(deck,it){ return deck.card?`${secOf(it,deck).ask}${it.d!==deck.title&&!/\(/.test(deck.title)?' · '+it.d:''}`:it.d; }
+
+function progBar(cp,deck){
+  const pct=cp.mastered?100:cp.learned?Math.min(100,cp.streak*10):cp.lastPct;
+  const top=cp.mastered?'Mastered':cp.learned?'Learned':'';
+  const label=cp.mastered?'':cp.learned?`${pct}% from mastery`:`${pct}% learned`;
+  const what=deck.card?'card':'deck';
+  const warn=cp.strikes>=1&&(cp.mastered||cp.learned)?`<p class="pbar-warn">One more failed run in a row and ${cp.mastered?`this ${what} drops back to Learned`:`this ${what} loses Learned`}.</p>`:'';
+  const kind=cp.mastered?' gold':cp.learned?' ok':'';
+  return `<div class="pbar-wrap">${top?`<div class="pbar-top${kind}">${top}</div>`:''}
+    <div class="pbar${kind}" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="${esc(label||top)}"><i style="width:${pct}%"></i></div>
+    ${label?`<div class="pbar-label">${label}</div>`:''}${warn}</div>`;
+}
+
+function renderAbout(){
+  app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">About</div></div>
+  <h1 class="h-res">About</h1>
+  <section class="about">
+    <p>Type each answer from memory, in full. Typos are forgiven; missing words are not. Miss and you retype the answer before moving on, and the card comes back a few cards later until you clear the deck with zero errors.</p>
+    <h2 class="sect">Grading</h2>
+    <p><b>Key words</b> (Word for word off): every word counts except small connecting words like “of”, “the”, “with” and “to”. Numbers, units, routes and “or” versus “and” always have to match; an extra “and” that just joins a list is fine.</p>
+    <p><b>Word for word</b>: every word, in protocol order. You can skip “a”, “an”, “the” and “but”.</p>
+    <p>Either way, typos are forgiven. A word or two slightly out of place still passes and gets pointed out; anything more scrambled fails.</p>
+    <h2 class="sect">Learned and Mastered</h2>
+    <p>Before a deck is Learned, the bar shows how many cards you got right the first time in your last full run. One perfect run (no misses, nothing coming back) makes it Learned and starts the mastery bar at 10%. Each perfect run in a row adds 10%; 10 in a row is Mastered.</p>
+    <p>A run fails at its first miss, and it counts even if you restart. A failed run sets the mastery bar back to 0%. Two failed runs in a row drop a Mastered deck to Learned, or a Learned deck back to zero. A perfect run in between clears the first one. Drilling just the missed cards doesn't count either way.</p>
+    <p>Finish a full run at least every 169 hours or the deck resets to zero. A red countdown shows on the deck for the last 24 hours.</p>
+    <h2 class="sect">Source</h2>
+    <p>Card text is copied word for word from the County of San Diego EMS P-115 Medication List (7/1/2026), from the 2026-27 Protocol &amp; Policy Updates Packet. Indication cards also ask for the protocol numbers each drug appears in.</p>
+  </section>`;
+}
+
+function renderResults(){
+  const deck=deckById(result.deckId); const r=result;
+  const perfect=r.misses===0;
+  const pct=Math.round(r.firstTry/r.total*100);
+  const missedList=r.missed.map(i=>{ const it=deck.items[i]; return it?`<li><b>${esc(itemLabel(deck,it))}</b>${it.c?`<span>${esc(it.c)}</span>`:''}</li>`:''; }).join('');
+  app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${esc(deck.short)}</div></div>
+  ${r.newlyMastered?'<div class="stamp gold">Mastered</div>':perfect&&!r.subset?'<div class="stamp">Learned</div>':''}
+  <h1 class="h-res">${perfect?(r.subset?'Missed cards cleared':'Perfect run'):'Run complete'}</h1>
+  <p class="lede">${perfect?(r.subset?'Every missed card right on the first try. Run the full deck to go for a perfect score.':deck.card?'Every section right on the first try.':'Every card right on the first try.'):`${r.missed.length} ${deck.card?'section':'card'}${r.missed.length===1?'':'s'} missed. Restart and go for zero.`}</p>
+  ${!r.subset&&r.prog?progBar(r.prog,deck):''}
+  <dl class="stats">
+    <div><dt>${deck.card?'Sections':'Cards'}</dt><dd>${r.total}</dd></div>
+    <div><dt>First try</dt><dd>${pct}%</dd></div>
+    <div><dt>Misses</dt><dd>${r.misses}</dd></div>
+  </dl>
+  ${r.missed.length?`<section><h2 class="sect">Missed this run</h2><div class="list"><ul class="mlist">${missedList}</ul></div></section>`:''}
+  <div class="actions">
+    <button class="btn primary" data-act="restartdeck">Restart ${deck.card?'card':'full deck'}</button>
+    ${r.missed.length?`<button class="btn" data-act="drillmissed">Drill the ${r.missed.length} missed</button>`:''}
+  </div>`;
+}
+
+function renderStudy(){
+  const deck=deckById(ui.deckId);
+  const items=deck.items.map(it=>{
+    const g=parseAnswer(it.a).map(s=>s.k?`<mark class="k">${esc(s.disp)}</mark>`:esc(s.s)).join('');
+    const mn=it.mn?`<span class="c">Mnemonic: ${esc(mnemonicLetters(it.mn,false))}${store.mnem&&store.mnem[it.d]?' · Mine: '+esc(store.mnem[it.d]):''}</span>`:'';
+    return `<li><span class="q">${esc(itemLabel(deck,it))}</span>${it.c?`<span class="c">${esc(it.c)}</span>`:''}<span class="a">${g}</span>${it.p?`<span class="c">Protocols: ${esc(it.p.join(', '))}</span>`:''}${mn}${it.n?`<span class="c">${esc(it.n)}</span>`:''}</li>`;
+  }).join('');
+  const r=loadRun(deck);
+  app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="${deck.card?'cards':'home'}">‹ ${deck.card?'Drug cards':'All decks'}</button><div class="tb-right">${deck.items.length} ${deck.unit}</div></div>
+  <h1 class="h-res">${esc(deck.title)}</h1>
+  <p class="lede">${deck.card?'The full drug card':esc(deck.ask)}, word for word from P-115.</p>
+  <div class="actions"><button class="btn primary" data-act="start" data-id="${esc(deck.id)}">${r?'Resume drill':'Start drill'}</button></div>
+  <div class="list"><ul class="mlist study">${items}</ul></div>`;
+}
+
+const EXAMPLE='Adenosine, first dose :: [6 mg] rapid IV/IO\nAtropine, unstable bradycardia max :: [3 mg]\nVF / pulseless VT, epi starts after :: [second|2nd] [defibrillation|shock]';
+function renderEdit(){
+  const c=store.custom.find(x=>x.id===ui.editId);
+  app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="home">‹ All decks</button><div class="tb-right">${c?'Edit deck':'New deck'}</div></div>
+  <h1 class="h-res">${c?'Edit deck':'New deck'}</h1>
+  <div class="field"><label for="dName">Deck name</label><input type="text" id="dName" value="${c?esc(c.title):''}" placeholder="Cardiac arrest protocol"></div>
+  <div class="field"><label for="dAsk">What each card asks for</label><input type="text" id="dAsk" value="${c?esc(c.ask||''):''}" placeholder="Answer"></div>
+  <div class="field">
+    <label for="dSrc">Cards</label>
+    <p class="note">One card per line: <code>prompt :: answer</code>. Put words that must appear in <code>[brackets]</code> and separate accepted alternatives with <code>|</code>, as in <code>[VF|ventricular fibrillation]</code>. A line with no brackets is graded on every word.</p>
+    <textarea id="dSrc" spellcheck="false" placeholder="${esc(EXAMPLE)}">${c?esc(c.src):''}</textarea>
+    <p class="note" id="dCount"></p>
+  </div>
+  ${ui.err?`<p class="err">${esc(ui.err)}</p>`:''}
+  <div class="actions">
+    <button class="btn primary" data-act="save">Save deck</button>
+    ${c?`<button class="btn danger" id="delBtn" data-act="del">Delete</button>`:''}
+  </div>`;
+  const src=document.getElementById('dSrc'), cnt=document.getElementById('dCount');
+  const upd=()=>{ const p=parseSrc(src.value); cnt.textContent=`${p.items.length} card${p.items.length===1?'':'s'}${p.skipped?` · ${p.skipped} line${p.skipped===1?'':'s'} skipped (no ::)`:''}`; };
+  src.addEventListener('input',upd); upd();
+}
+
+function render(){
+  armed=null; decayAll();
+  if(ui.screen==='drill'&&run) renderDrill();
+  else if(ui.screen==='results'&&result) renderResults();
+  else if(ui.screen==='study'&&deckById(ui.deckId)) renderStudy();
+  else if(ui.screen==='edit') renderEdit();
+  else if(ui.screen==='cards') renderCards();
+  else if(ui.screen==='about') renderAbout();
+  else { ui.screen='home'; renderHome(); }
+}
+
+function startDeck(id,fresh,subset){
+  const deck=deckById(id); if(!deck||!deck.items.length) return;
+  run=(!fresh&&!subset&&loadRun(deck))||newRun(deck,subset);
+  if(!run.pres) run.pres=freshPres();
+  saveRun(); ui.screen='drill'; ui.deckId=id; render(); window.scrollTo({top:0});
+}
+
+function arm(btn,key,label){
+  if(armed===key){ armed=null; clearTimeout(armTimer); return true; }
+  armed=key; btn.classList.add('armed'); const old=btn.textContent; btn.textContent=label;
+  clearTimeout(armTimer); armTimer=setTimeout(()=>{ armed=null; btn.classList.remove('armed'); btn.textContent=old; },3000);
+  return false;
+}
+
+app.addEventListener('click',e=>{
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const a=b.dataset.act, id=b.dataset.id;
+  switch(a){
+    case 'home': ui.screen='home'; ui.err=''; render(); window.scrollTo({top:0}); break;
+    case 'cards': ui.screen='cards'; render(); window.scrollTo({top:0}); break;
+    case 'about': ui.screen='about'; render(); window.scrollTo({top:0}); break;
+    case 'signin': doSignIn(); break;
+    case 'signout': doSignOut(); break;
+    case 'start': startDeck(id,false); break;
+    case 'study': ui.screen='study'; ui.deckId=id; render(); window.scrollTo({top:0}); break;
+    case 'mode': store.settings.mode=b.dataset.v; touch(); render(); break;
+    case 'go': primary(); break;
+    case 'reveal':
+      if(run&&fromMemory()) miss('',null,protEl().value,null);
+      break;
+    case 'override': if(run&&run.phase==='retype') override(); break;
+    case 'nextword': {
+      if(!run||!fromMemory()||pres().nw) break;
+      const w=nextWord(curItem(),ans.value,store.settings.mode);
+      pres().nw=w||'(you’ve reached the end)'; pres().hintKind=pres().hintKind==='mnemonic'?'both':'next'; pres().hinted=true; saveRun(); paint();
+      try{ ans.focus({preventScroll:true}); }catch(err){}
+      break;
+    }
+    case 'mnem': { const pp=pres(); pp.mn=!pp.mn; pp.mnEdit=false; if(pp.mn&&!pp.hinted){ pp.hinted=true; pp.hintKind='mnemonic'; } if(pp.mn) rememberView(curItem().d,mnView(curItem())); saveRun(); paint(); break; }
+    case 'mnview': {
+      const v=b.dataset.v; pres().mnView=v; pres().mnEdit=false;
+      if(v!=='mine'){ store.settings.mnemView=v; touch(); }
+      rememberView(curItem().d,v); saveRun();
+      paintMnem(); break;
+    }
+    case 'mnedit': pres().mnEdit=true; paintMnem(); const mi=document.getElementById('mnInput'); if(mi) mi.focus(); break;
+    case 'mnsave': {
+      const v=(document.getElementById('mnInput').value||'').trim(); const d=curItem().d;
+      store.mnem=store.mnem||{};
+      if(v) store.mnem[d]=v; else delete store.mnem[d];
+      touch(); pres().mnEdit=false; pres().mnView=v?'mine':null; if(v) rememberView(d,'mine'); else if(store.mnemLast&&store.mnemLast[d]==='mine') rememberView(d,null); paintMnem(); break;
+    }
+    case 'mndelete': { store.mnem=store.mnem||{}; delete store.mnem[curItem().d]; if(store.mnemLast&&store.mnemLast[curItem().d]==='mine') rememberView(curItem().d,null); touch(); pres().mnEdit=false; pres().mnView=null; paintMnem(); break; }
+    case 'restart': if(arm(b,'restart','Tap again to restart')){ const d=run.deckId; dropRun(d); startDeck(d,true); } break;
+    case 'restartdeck': startDeck(result.deckId,true); break;
+    case 'drillmissed': startDeck(result.deckId,true,result.missed); break;
+    case 'new': ui.screen='edit'; ui.editId=null; ui.err=''; render(); window.scrollTo({top:0}); break;
+    case 'edit': ui.screen='edit'; ui.editId=id; ui.err=''; render(); window.scrollTo({top:0}); break;
+    case 'save': {
+      const title=document.getElementById('dName').value.trim();
+      const ask=document.getElementById('dAsk').value.trim();
+      const src=document.getElementById('dSrc').value;
+      const p=parseSrc(src);
+      if(!title){ ui.err='Give the deck a name.'; keepEdit(title,ask,src); break; }
+      if(!p.items.length){ ui.err='Add at least one card, written as prompt :: answer.'; keepEdit(title,ask,src); break; }
+      let c=store.custom.find(x=>x.id===ui.editId);
+      if(c){ Object.assign(c,{title,ask,src,updatedAt:Date.now()}); dropRun(c.id); }
+      else { c={id:'c'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),title,ask,src,updatedAt:Date.now()}; store.custom.push(c); }
+      touch(); ui.screen='home'; ui.err=''; render(); window.scrollTo({top:0});
+      break;
+    }
+    case 'del': if(arm(b,'del','Tap again to delete')){ store.custom=store.custom.filter(x=>x.id!==ui.editId); delete store.progress[ui.editId]; dropRun(ui.editId); touch(); ui.screen='home'; render(); } break;
+  }
+});
+
+function keepEdit(title,ask,src){
+  render();
+  document.getElementById('dName').value=title; document.getElementById('dAsk').value=ask;
+  const s=document.getElementById('dSrc'); s.value=src; s.dispatchEvent(new Event('input'));
+}
+
+/* Boot, keeping the viewer's place across a republish */
+function start(data){
+  data=data||{};
+  if(data.ui&&data.ui.screen){
+    ui=Object.assign(ui,data.ui);
+    if(data.run) run=data.run;
+    if(data.result) result=data.result;
+    if(ui.screen==='drill'&&run&&!deckById(run.deckId)) { run=null; ui.screen='home'; }
+  }
+  render();
+  initRemote();
+}
+start({});
+
+})();
+</script>
+</body>
+</html>
