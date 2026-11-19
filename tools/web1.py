@@ -8,7 +8,9 @@ try:
   with sync_playwright() as p:
     b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
     # 1) no config: device-only
-    ctx=b.new_context(viewport={'width':390,'height':900}); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e: errs.append(str(e)))
+    ctx=b.new_context(viewport={'width':390,'height':900}); errs=[]
+    ctx.route('**/config.js',lambda r: r.fulfill(body='window.FIREBASE_CONFIG=null;',content_type='application/javascript'))
+    pg=ctx.new_page(); pg.on('pageerror',lambda e: errs.append(str(e)))
     pg.goto(URL); pg.wait_for_timeout(400)
     ok(pg.locator('.acct').count()==0,'no config: no account row')
     ok('saved on this device' in pg.inner_text('#syncNote'),'no config: device note')
@@ -38,7 +40,7 @@ try:
     pg.click('[data-act=start][data-id=moa]'); pg.wait_for_timeout(150); pg.type('#ans','Pancreatic'); pg.click('[data-act=home]'); pg.wait_for_timeout(100)
     pg.click('[data-act=signout]'); pg.wait_for_timeout(300)
     ok(pg.locator('[data-act=signin]').count()==1 and st()['settings']['auto']==False and not st().get('uid'),'signed out: device reset')
-    ok(pg.evaluate("Object.keys(localStorage).filter(k=>k.startsWith('pdrill:run:')).length")==0,'signed out: runs cleared')
+    ok(pg.evaluate("Object.keys(JSON.parse(localStorage.getItem('pdrill:v1')).runs||{}).length")==0,'signed out: runs cleared')
     # B signs in: empty account, gets fresh store, not A's
     pg.evaluate("window.__nextUser={uid:'B',email:'b@example.com'}"); pg.click('[data-act=signin]'); pg.wait_for_timeout(400)
     ok('b@example.com' in pg.inner_text('.acct') and 'users/B' in db(),'B signed in, own doc created')

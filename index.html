@@ -1249,7 +1249,7 @@ const BUILTIN=[
 
 /* ---------- Store ---------- */
 const LS='pdrill:v1';
-function freshStore(){ return {settings:{mode:'keys',auto:false,v:3,live:false,mnemView:'book'},progress:{},custom:[],mnem:{},mnemLast:{},streak:{days:[],today:{d:'',k:[]}},updatedAt:0}; }
+function freshStore(){ return {settings:{mode:'keys',auto:false,v:3,live:false,mnemView:'book'},progress:{},custom:[],mnem:{},mnemLast:{},streak:{days:[],today:{d:'',k:[]}},runs:{},stamp:{},updatedAt:0}; }
 function cleanStore(s){
   const f=freshStore(); if(!s||typeof s!=='object') return f;
   f.settings=Object.assign(f.settings,s.settings||{});
@@ -1261,13 +1261,59 @@ function cleanStore(s){
   f.mnem=(s.mnem&&typeof s.mnem==='object')?s.mnem:{};
   f.mnemLast=(s.mnemLast&&typeof s.mnemLast==='object')?s.mnemLast:{};
   if(s.streak&&typeof s.streak==='object'){ f.streak.days=Array.isArray(s.streak.days)?s.streak.days.filter(d=>typeof d==='string'):[]; if(s.streak.today&&typeof s.streak.today.d==='string'&&Array.isArray(s.streak.today.k)) f.streak.today={d:s.streak.today.d,k:s.streak.today.k.slice()}; }
+  if(s.runs&&typeof s.runs==='object') for(const k in s.runs){ const r=s.runs[k]; if(r&&typeof r==='object'&&(typeof r.gone==='number'||Array.isArray(r.ids))) f.runs[k]=r; }
+  if(s.stamp&&typeof s.stamp==='object') for(const k in s.stamp) if(typeof s.stamp[k]==='number') f.stamp[k]=s.stamp[k];
   f.uid=typeof s.uid==='string'?s.uid:'';
   f.updatedAt=+s.updatedAt||0; return f;
 }
 let store=freshStore();
 try{ store=cleanStore(JSON.parse(localStorage.getItem(LS)||'null')); }catch(e){}
 function persistLocal(){ try{ localStorage.setItem(LS,JSON.stringify(store)); }catch(e){} }
-function touch(){ store.updatedAt=Date.now(); persistLocal(); scheduleRemote(); }
+function touch(){ stampParts(); store.updatedAt=Date.now(); persistLocal(); scheduleRemote(); }
+
+/* Keeping devices in step. Each part of your progress (each deck's record, settings, custom decks, mnemonics)
+   remembers when it last changed, and so does each run in progress, so two copies (this device and your account)
+   merge part by part: the newer part wins, and streak days from both are kept. */
+const partsOf=st=>{ const o={settings:st.settings,custom:st.custom,mnem:st.mnem,mnemLast:st.mnemLast}; for(const k in st.progress) o['p:'+k]=st.progress[k]; return o; };
+let partSnap={};
+function snapParts(){ partSnap={}; const ps=partsOf(store); for(const k in ps) partSnap[k]=JSON.stringify(ps[k]); }
+function stampParts(){ const now=Date.now(), ps=partsOf(store); for(const k in ps){ const j=JSON.stringify(ps[k]); if(partSnap[k]!==j){ store.stamp[k]=now; partSnap[k]=j; } } }
+const runT=r=>r?(r.gone||r.t||0):-1;
+function mergeStores(a,b){   // a: this device, b: the other copy
+  const m=cleanStore(JSON.parse(JSON.stringify(a)));
+  let aNewer=false, bNewer=false;
+  const pa=partsOf(a), pb=partsOf(b), sa=a.stamp||{}, sb=b.stamp||{};
+  for(const k of new Set([...Object.keys(pa),...Object.keys(pb)])){
+    const ja=k in pa?JSON.stringify(pa[k]):null, jb=k in pb?JSON.stringify(pb[k]):null;
+    if(ja===jb) continue;
+    let ta=ja==null?-1:(sa[k]||0), tb=jb==null?-1:(sb[k]||0);
+    if(ta===tb){ ta=a.updatedAt||0; tb=b.updatedAt||0; }   // older saves without change times: the newer copy wins
+    if(tb>ta){ const v=JSON.parse(jb); if(k.startsWith('p:')) m.progress[k.slice(2)]=v; else m[k]=v; if(sb[k]) m.stamp[k]=sb[k]; bNewer=true; }
+    else aNewer=true;
+  }
+  for(const k of new Set([...Object.keys(a.runs||{}),...Object.keys(b.runs||{})])){
+    const ra=(a.runs||{})[k], rb=(b.runs||{})[k], ta=runT(ra), tb=runT(rb);
+    if(tb>ta){ m.runs[k]=JSON.parse(JSON.stringify(rb)); bNewer=true; } else if(ta>tb) aNewer=true;
+  }
+  const da=new Set(a.streak.days), db=new Set(b.streak.days);
+  if([...db].some(d=>!da.has(d))||(b.streak.today.d===a.streak.today.d&&b.streak.today.k.some(x=>!a.streak.today.k.includes(x)))||b.streak.today.d>a.streak.today.d) bNewer=true;
+  if([...da].some(d=>!db.has(d))||(b.streak.today.d===a.streak.today.d&&a.streak.today.k.some(x=>!b.streak.today.k.includes(x)))||a.streak.today.d>b.streak.today.d) aNewer=true;
+  mergeStreak(m,b);
+  m.updatedAt=Math.max(a.updatedAt||0,b.updatedAt||0);
+  return {m,aNewer,bNewer};
+}
+// Take in a merged copy. If the run on screen moved on elsewhere, show where it is now.
+function adoptStore(m){
+  const live=run&&ui.screen==='drill'?run.deckId:null, before=live?runT(store.runs[live]):null;
+  store=m; snapParts(); persistLocal();
+  if(live&&runT(store.runs[live])!==before){
+    const r=store.runs[live], deck=curDeck();
+    if(r&&!r.gone&&deck&&r.sig===sig(deck)) run=JSON.parse(JSON.stringify(r));
+    else { run=null; ui.screen=deck&&deck.card?'cards':'home'; }
+    render(); return;
+  }
+  if(ui.screen==='home'||ui.screen==='cards'||ui.screen==='about') render();
+}
 
 /* Daily streak: a day counts once you've answered 3 different things with no mistakes that day
    (a card in any deck, or a section of a drug card). Days are your phone's calendar days. */
@@ -1298,26 +1344,38 @@ function mergeStreak(into,from){
 let shownDay=dayKey();
 
 /* Account sync: Google sign-in (Firebase). Each person's progress is one private document, users/<uid>,
-   that only they can read or write. Without signing in, progress stays on this device. */
-let remote=null, fbAuth=null, fdb=null, fbUser=null, authReady=false, signErr='', syncErr='';
+   that only they can read or write. Without signing in, progress stays on this device. Copies are merged part by
+   part (see mergeStores), so two devices never overwrite each other, and a device catches up when you come back to it. */
+let remote=null, fbAuth=null, fdb=null, fbUser=null, authReady=false, signErr='', syncErr='', seenRemote=0;
 let saveTimer=null, saving=false, again=false, retryTimer=null;
 const FBL=()=>window.FBLIB, FBC=()=>window.FIREBASE_CONFIG;
 const fbOn=()=>!!(FBL()&&FBC()&&FBC().apiKey);
+const OFFLINE='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
 function clearRuns(){ try{ Object.keys(localStorage).filter(k=>k.startsWith('pdrill:run:')).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
 function scheduleRemote(){ if(!remote) return; clearTimeout(saveTimer); saveTimer=setTimeout(flushRemote,1200); }
+async function readRemote(ref){ const sn=await FBL().getDoc(ref||remote); return sn.exists()?cleanStore(JSON.parse(JSON.stringify(sn.data()||{}))):null; }
+function absorb(r){ seenRemote=Math.max(seenRemote,r.updatedAt); const x=mergeStores(store,r); if(x.bNewer){ x.m.uid=store.uid; adoptStore(x.m); } return x; }
 async function flushRemote(){
   clearTimeout(saveTimer); saveTimer=null;
   if(!remote) return; if(saving){again=true;return;}
   saving=true; const ref=remote;
-  try{ await FBL().setDoc(ref,JSON.parse(JSON.stringify(store))); if(syncErr){ syncErr=''; updateSync(); } }
-  catch(e){
-    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
-    updateSync(); clearTimeout(retryTimer); retryTimer=setTimeout(scheduleRemote,20000);
+  try{
+    const r=await readRemote(ref); if(r&&r.updatedAt>seenRemote&&ref===remote) absorb(r);   // never overwrite what another device saved
+    if(ref===remote){ await FBL().setDoc(ref,JSON.parse(JSON.stringify(store))); seenRemote=Math.max(seenRemote,store.updatedAt); }
+    if(syncErr){ syncErr=''; updateSync(); }
   }
+  catch(e){ syncErr=OFFLINE; updateSync(); clearTimeout(retryTimer); retryTimer=setTimeout(scheduleRemote,20000); }
   saving=false; if(again){again=false; flushRemote();}
 }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&remote&&saveTimer) flushRemote(); });
-window.addEventListener('online',()=>{ if(remote&&syncErr) scheduleRemote(); else if(fbUser&&!remote) onUser(fbUser); });
+async function pullRemote(){
+  if(!remote||saving) return; const ref=remote;
+  try{ const r=await readRemote(ref); if(ref!==remote||!r||r.updatedAt<=seenRemote) return; const x=absorb(r); if(x.aNewer) scheduleRemote(); if(syncErr){ syncErr=''; updateSync(); } }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pullRemote(); else if(remote&&saveTimer) flushRemote(); });
+window.addEventListener('focus',()=>pullRemote());
+window.addEventListener('pageshow',()=>pullRemote());
+setInterval(()=>{ if(document.visibilityState==='visible') pullRemote(); },30000);
+window.addEventListener('online',()=>{ if(remote) scheduleRemote(); else if(fbUser) onUser(fbUser); });
 function initRemote(){
   if(!fbOn()){ updateSync(); return; }
   try{
@@ -1328,32 +1386,29 @@ function initRemote(){
   }catch(e){ authReady=true; updateSync(); }
 }
 async function onUser(u){
-  fbUser=u||null; remote=null; clearTimeout(retryTimer);
+  fbUser=u||null; remote=null; seenRemote=0; clearTimeout(retryTimer);
   if(!u){ updateSync(); if(ui.screen==='home') render(); return; }
   signErr='';
-  const L=FBL(), ref=L.doc(fdb,'users',u.uid);
+  const ref=FBL().doc(fdb,'users',u.uid);
   try{
-    const snap=await Promise.race([L.getDoc(ref),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),12000))]);
+    const d=await Promise.race([readRemote(ref),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),12000))]);
     if(fbUser!==u) return;
     const mine=store.uid===u.uid;
-    if(snap.exists()){
-      const d=cleanStore(JSON.parse(JSON.stringify(snap.data()||{})));
-      if(mine&&store.updatedAt>d.updatedAt){ mergeStreak(store,d); remote=ref; scheduleRemote(); }
-      else if(!mine||d.updatedAt>store.updatedAt){
-        if(store.uid&&!mine) clearRuns();
-        if(mine) mergeStreak(d,store);
-        store=d; store.uid=u.uid; persistLocal(); remote=ref;
-      } else remote=ref;
+    if(d&&mine){ remote=ref; const x=absorb(d); if(x.aNewer) scheduleRemote(); }
+    else if(d){
+      // This device's copy isn't this account's (signed out, or someone else's): use the account's copy.
+      if(store.uid) clearRuns();
+      d.uid=u.uid; seenRemote=d.updatedAt; remote=ref; adoptStore(d);
     } else {
       // First sign-in for this account: keep what's on this device unless it belongs to someone else.
-      if(store.uid&&!mine){ store=freshStore(); clearRuns(); }
+      if(store.uid&&!mine){ store=freshStore(); snapParts(); clearRuns(); }
       store.uid=u.uid; if(!store.updatedAt) store.updatedAt=Date.now(); persistLocal();
       remote=ref; flushRemote();
     }
     syncErr='';
   }catch(e){
     // Can't tell what's in the account yet, so don't overwrite it; try again shortly.
-    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
+    syncErr=OFFLINE;
     retryTimer=setTimeout(()=>{ if(fbUser===u) onUser(u); },20000);
   }
   updateSync(); if(ui.screen==='home') render();
@@ -1383,7 +1438,7 @@ async function doSignOut(){
   if(remote) await flushRemote();
   remote=null;
   try{ await FBL().signOut(fbAuth); }catch(e){}
-  store=freshStore(); persistLocal(); clearRuns(); run=null; result=null;
+  store=freshStore(); snapParts(); persistLocal(); clearRuns(); run=null; result=null;
   ui.screen='home'; render();
 }
 function acctHTML(){
@@ -1442,9 +1497,13 @@ function sig(deck){ let h=5381; const s=deck.items.map(i=>i.d+'\u0000'+(i.c||'')
 
 /* ---------- Runs ---------- */
 const rk=id=>'pdrill:run:'+id;
-function loadRun(deck){ try{ const r=JSON.parse(localStorage.getItem(rk(deck.id))||'null'); if(r&&r.sig===sig(deck)&&r.cur!=null) return r; }catch(e){} return null; }
-function saveRun(){ if(run){ try{ localStorage.setItem(rk(run.deckId),JSON.stringify(run)); }catch(e){} } }
-function dropRun(id){ try{ localStorage.removeItem(rk(id)); }catch(e){} }
+function loadRun(deck){ const r=store.runs[deck.id]; if(r&&!r.gone&&r.sig===sig(deck)&&r.cur!=null) return JSON.parse(JSON.stringify(r)); return null; }
+function saveRun(){ if(run){ const c=JSON.parse(JSON.stringify(run)); c.t=Date.now(); store.runs[run.deckId]=c; store.updatedAt=c.t; persistLocal(); scheduleRemote(); } }
+function dropRun(id){ const t=Date.now(); store.runs[id]={gone:t}; store.updatedAt=t; persistLocal(); scheduleRemote(); }
+// Runs used to be kept in separate browser keys: move them into the store once. They have no save time, so
+// between two devices' old runs the one further along wins, and anything saved from now on beats both.
+try{ Object.keys(localStorage).filter(k=>k.startsWith('pdrill:run:')).forEach(k=>{ const id=k.slice(11); const r=JSON.parse(localStorage.getItem(k)||'null'); if(r&&!store.runs[id]){ r.t=r.t||1+(r.cleared||[]).length; store.runs[id]=r; } localStorage.removeItem(k); }); persistLocal(); }catch(e){}
+snapParts();
 function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 const freshPres=()=>({missed:false,hinted:false,nw:null,redo:false,mn:false});
 function newRun(deck,subset){

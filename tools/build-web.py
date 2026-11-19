@@ -50,26 +50,38 @@ start = s.index('/* Account sync:')
 end = s.index('function updateSync(){')
 end = s.index('\n', end) + 1
 WEB_SYNC = r'''/* Account sync: Google sign-in (Firebase). Each person's progress is one private document, users/<uid>,
-   that only they can read or write. Without signing in, progress stays on this device. */
-let remote=null, fbAuth=null, fdb=null, fbUser=null, authReady=false, signErr='', syncErr='';
+   that only they can read or write. Without signing in, progress stays on this device. Copies are merged part by
+   part (see mergeStores), so two devices never overwrite each other, and a device catches up when you come back to it. */
+let remote=null, fbAuth=null, fdb=null, fbUser=null, authReady=false, signErr='', syncErr='', seenRemote=0;
 let saveTimer=null, saving=false, again=false, retryTimer=null;
 const FBL=()=>window.FBLIB, FBC=()=>window.FIREBASE_CONFIG;
 const fbOn=()=>!!(FBL()&&FBC()&&FBC().apiKey);
+const OFFLINE='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
 function clearRuns(){ try{ Object.keys(localStorage).filter(k=>k.startsWith('pdrill:run:')).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
 function scheduleRemote(){ if(!remote) return; clearTimeout(saveTimer); saveTimer=setTimeout(flushRemote,1200); }
+async function readRemote(ref){ const sn=await FBL().getDoc(ref||remote); return sn.exists()?cleanStore(JSON.parse(JSON.stringify(sn.data()||{}))):null; }
+function absorb(r){ seenRemote=Math.max(seenRemote,r.updatedAt); const x=mergeStores(store,r); if(x.bNewer){ x.m.uid=store.uid; adoptStore(x.m); } return x; }
 async function flushRemote(){
   clearTimeout(saveTimer); saveTimer=null;
   if(!remote) return; if(saving){again=true;return;}
   saving=true; const ref=remote;
-  try{ await FBL().setDoc(ref,JSON.parse(JSON.stringify(store))); if(syncErr){ syncErr=''; updateSync(); } }
-  catch(e){
-    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
-    updateSync(); clearTimeout(retryTimer); retryTimer=setTimeout(scheduleRemote,20000);
+  try{
+    const r=await readRemote(ref); if(r&&r.updatedAt>seenRemote&&ref===remote) absorb(r);   // never overwrite what another device saved
+    if(ref===remote){ await FBL().setDoc(ref,JSON.parse(JSON.stringify(store))); seenRemote=Math.max(seenRemote,store.updatedAt); }
+    if(syncErr){ syncErr=''; updateSync(); }
   }
+  catch(e){ syncErr=OFFLINE; updateSync(); clearTimeout(retryTimer); retryTimer=setTimeout(scheduleRemote,20000); }
   saving=false; if(again){again=false; flushRemote();}
 }
-document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&remote&&saveTimer) flushRemote(); });
-window.addEventListener('online',()=>{ if(remote&&syncErr) scheduleRemote(); else if(fbUser&&!remote) onUser(fbUser); });
+async function pullRemote(){
+  if(!remote||saving) return; const ref=remote;
+  try{ const r=await readRemote(ref); if(ref!==remote||!r||r.updatedAt<=seenRemote) return; const x=absorb(r); if(x.aNewer) scheduleRemote(); if(syncErr){ syncErr=''; updateSync(); } }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') pullRemote(); else if(remote&&saveTimer) flushRemote(); });
+window.addEventListener('focus',()=>pullRemote());
+window.addEventListener('pageshow',()=>pullRemote());
+setInterval(()=>{ if(document.visibilityState==='visible') pullRemote(); },30000);
+window.addEventListener('online',()=>{ if(remote) scheduleRemote(); else if(fbUser) onUser(fbUser); });
 function initRemote(){
   if(!fbOn()){ updateSync(); return; }
   try{
@@ -80,32 +92,29 @@ function initRemote(){
   }catch(e){ authReady=true; updateSync(); }
 }
 async function onUser(u){
-  fbUser=u||null; remote=null; clearTimeout(retryTimer);
+  fbUser=u||null; remote=null; seenRemote=0; clearTimeout(retryTimer);
   if(!u){ updateSync(); if(ui.screen==='home') render(); return; }
   signErr='';
-  const L=FBL(), ref=L.doc(fdb,'users',u.uid);
+  const ref=FBL().doc(fdb,'users',u.uid);
   try{
-    const snap=await Promise.race([L.getDoc(ref),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),12000))]);
+    const d=await Promise.race([readRemote(ref),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),12000))]);
     if(fbUser!==u) return;
     const mine=store.uid===u.uid;
-    if(snap.exists()){
-      const d=cleanStore(JSON.parse(JSON.stringify(snap.data()||{})));
-      if(mine&&store.updatedAt>d.updatedAt){ mergeStreak(store,d); remote=ref; scheduleRemote(); }
-      else if(!mine||d.updatedAt>store.updatedAt){
-        if(store.uid&&!mine) clearRuns();
-        if(mine) mergeStreak(d,store);
-        store=d; store.uid=u.uid; persistLocal(); remote=ref;
-      } else remote=ref;
+    if(d&&mine){ remote=ref; const x=absorb(d); if(x.aNewer) scheduleRemote(); }
+    else if(d){
+      // This device's copy isn't this account's (signed out, or someone else's): use the account's copy.
+      if(store.uid) clearRuns();
+      d.uid=u.uid; seenRemote=d.updatedAt; remote=ref; adoptStore(d);
     } else {
       // First sign-in for this account: keep what's on this device unless it belongs to someone else.
-      if(store.uid&&!mine){ store=freshStore(); clearRuns(); }
+      if(store.uid&&!mine){ store=freshStore(); snapParts(); clearRuns(); }
       store.uid=u.uid; if(!store.updatedAt) store.updatedAt=Date.now(); persistLocal();
       remote=ref; flushRemote();
     }
     syncErr='';
   }catch(e){
     // Can't tell what's in the account yet, so don't overwrite it; try again shortly.
-    syncErr='Couldn’t reach your account just now. Your progress is kept on this device and will be saved when you’re back online.';
+    syncErr=OFFLINE;
     retryTimer=setTimeout(()=>{ if(fbUser===u) onUser(u); },20000);
   }
   updateSync(); if(ui.screen==='home') render();
@@ -135,7 +144,7 @@ async function doSignOut(){
   if(remote) await flushRemote();
   remote=null;
   try{ await FBL().signOut(fbAuth); }catch(e){}
-  store=freshStore(); persistLocal(); clearRuns(); run=null; result=null;
+  store=freshStore(); snapParts(); persistLocal(); clearRuns(); run=null; result=null;
   ui.screen='home'; render();
 }
 function acctHTML(){

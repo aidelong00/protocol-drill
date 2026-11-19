@@ -13,7 +13,7 @@
     signInWithRedirect:async()=>{},
     signOut:async()=>{ localStorage.removeItem('__fakeauth'); fire(); },
     doc:(db,c,id)=>({path:c+'/'+id}),
-    getDoc:async ref=>{ if(window.__dbDown) throw {code:'unavailable'}; const d=(LS('__fakedb')||{})[ref.path]; return {exists:()=>!!d, data:()=>d}; },
-    setDoc:async (ref,v)=>{ if(window.__dbDown) throw {code:'unavailable'}; const db=LS('__fakedb')||{}; db[ref.path]=v; W('__fakedb',db); window.__writes=(window.__writes||0)+1; }
+    getDoc:async ref=>{ if(window.__dbDown) throw {code:'unavailable'}; let d; if(window.__srvGet){ const j=await window.__srvGet(ref.path); d=j?JSON.parse(j):null; } else d=(LS('__fakedb')||{})[ref.path]; return {exists:()=>!!d, data:()=>d}; },
+    setDoc:async (ref,v)=>{ if(window.__dbDown) throw {code:'unavailable'}; if(window.__srvSet) await window.__srvSet(ref.path,JSON.stringify(v)); else { const db=LS('__fakedb')||{}; db[ref.path]=v; W('__fakedb',db); } window.__writes=(window.__writes||0)+1; }
   };
 })();
