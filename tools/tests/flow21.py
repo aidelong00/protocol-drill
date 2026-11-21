@@ -1,0 +1,15 @@
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    b=p.chromium.launch(executable_path='/usr/bin/google-chrome',args=['--no-sandbox'])
+    ctx=b.new_context(viewport={'width':390,'height':900},device_scale_factor=2); pg=ctx.new_page(); errs=[]; pg.on('pageerror',lambda e: errs.append(str(e)))
+    pg.goto('file:///home/claude/protocol-drill/index.html'); pg.wait_for_timeout(300)
+    pg.evaluate("()=>{ localStorage.clear(); localStorage.setItem('pdrill:v1',JSON.stringify({settings:{mode:'keys',auto:false,v:3,live:false,prot:true},progress:{},custom:[],mnem:{},mnemLast:{},updatedAt:Date.now()})); }")
+    pg.reload(); pg.wait_for_timeout(200); pg.click('[data-act=start][data-id=ind]'); pg.wait_for_timeout(150)
+    pg.click('#reveal'); pg.wait_for_timeout(150)
+    A=pg.inner_text('.fb-ans'); P=pg.inner_text('.fb-prot').replace('Protocols:','').strip()
+    pg.fill('#ans',A); pg.keyboard.press('Enter'); pg.wait_for_timeout(500)
+    print('step:', pg.inner_text('.fix-label'), '| top prot bold:', pg.locator('.fb-prot b.xb').count(), 'hl:', pg.locator('.fb-prot .w.miss').count())
+    pg.fill('#prot',P+', 999'); pg.dispatch_event('#prot','input'); pg.keyboard.press('Enter'); pg.wait_for_timeout(200)
+    print('box:', pg.inner_text('.fix-text'), '| still:', pg.inner_text('.fb-still'))
+    pg.screenshot(path='prot_extra.png',full_page=True)
+    print('errors:',errs); b.close()
