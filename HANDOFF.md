@@ -30,7 +30,7 @@ Sections 0–3 are the procedure; 4–5 are the reference you'll need while chan
 
 | Thing | Where |
 |---|---|
-| Claude version (artifact) | slug `b4eff82c-d9f9-4038-a0e1-5061c9accc87`, https://claude.ai/artifact/PLtae1h23avPqFDEyhwaHL, title "Protocol Drill", shared **public** (publishing needs `shared_live:'public'` and `artifact_title:'Protocol Drill'`). Live version at last update: `1795628208-9c05`. |
+| Claude version (artifact) | slug `b4eff82c-d9f9-4038-a0e1-5061c9accc87`, https://claude.ai/artifact/PLtae1h23avPqFDEyhwaHL, title "Protocol Drill", shared **public** (publishing needs `shared_live:'public'` and `artifact_title:'Protocol Drill'`). Live version at last update: `1795629388-968c`. |
 | Artifact capabilities | `db` rules `[{path:"",read:"admin",write:"admin"},{path:"data/users/{self}",read:"interact",write:"interact"}]`, plus `user`. Each person's progress is the doc `data/users/<id>/state`. **Platform rule:** link viewers are "Viewers" and can never write the db, whatever the rules say (the tool also refuses to loosen rules on a public artifact). That's why the website exists. |
 | Website | https://aidelong00.github.io/protocol-drill/ (GitHub Pages, branch `main`, root). Repo **aidelong00/protocol-drill** (public). The Claude GitHub App is installed on the account, so `add_repo` with `access:"push"` works. |
 | Repo layout | `index.html` (built site), `config.js` (Firebase web config, public by design), `firebase.js` (bundled Firebase SDK: app, auth, firestore/lite), `manifest.webmanifest`, icons, `.nojekyll`, **`src/index.html` (the app source, same file as the artifact)**, `tools/` (build-web.py, fb-entry.js, setup.sh, run-tests.sh, tests/), this file. |
@@ -46,7 +46,7 @@ The Claude version and the website are separate apps with separate progress (Cla
 2. `bash /home/claude/gh-site/tools/setup.sh`. This recreates `/home/claude/protocol-drill/index.html` (source),
    `/home/claude/web/` (build script and site files), `/home/claude/tests/` and `/home/claude/packet/cards.json`
    (test fixture). The tests and build script use these absolute paths.
-3. Check that the source is current: `get_artifact` on the slug. If the live version isn't `1795628208-9c05`, or
+3. Check that the source is current: `get_artifact` on the slug. If the live version isn't `1795629388-968c`, or
    isn't the one noted in the latest commit message, `read_artifact` it and save that HTML as the source
    (`/home/claude/protocol-drill/index.html` and `src/index.html`).
 4. Baseline: `bash /home/claude/gh-site/tools/run-tests.sh` (`node` argument = grading suites only, a few minutes;
@@ -225,7 +225,10 @@ rename anything it searches for, update the script.
   - "Something's off…" shows 2 words after a slip. A stop comes 5 words after.
   - **Skipped words** warn as soon as the 2 words after the gap match, and stop 2 words later.
   - A stop cuts the box back to the start of that sentence. The stop screen shows the full answer with the problem
-    in **bold** ("+word" where a stray word went) and "You wrote: …" with your wrong word in bold.
+    in **bold** and "You wrote: …" with your wrong or stray word in bold.
+  - Extra words are never inserted into the answer as "+word" (the user found "+3 +6 +12" confusing). They're
+    named in the "Missing or wrong" / "Still not right" lines instead (e.g. extra "3"), and extra protocols as
+    "extra protocol S-…".
   - A warning counts as a miss unless that switch is off. A stop is always a miss.
 - **After a miss:**
   - "N mistakes: fix just this part / fix these parts / retype the whole answer" (3 or more mistakes means retype
@@ -298,7 +301,7 @@ autosave, two-device sync tests); Mistake warning renamed; skipped words warn, t
 answer with bold; daily streak and date row; clearer back button; runs synced across devices with part-by-part
 merging; next word prefers nearby matches (Ipratropium "acetylcholine" case); number words; one-step fixing; box
 per drug; onto = to; optional joining "and" in mechanisms; warning-counts-as-miss switch (home and card screen);
-Show answer checks typed text; fix parts never doubled; small-word typos ("te" for "the", Glucagon case); cut-off
+Show answer checks typed text; fix parts never doubled; no "+word" markers; small-word typos ("te" for "the", Glucagon case); cut-off
 grading of only the typed part (Magnesium Sulfate case). Handoff script; then "synthesis of prostaglandin" =
 "prostaglandin synthesis" (Acetaminophen case); Skip for now; Drill one card or section from Review.
 

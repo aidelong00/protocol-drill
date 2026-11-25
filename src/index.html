@@ -1865,11 +1865,10 @@ function renderDrill(){
 
 // bold: the answer at the top while you retype a part below it; mistakes are bold there, and only the part you retype is highlighted.
 function answerHTML(item,g,bold){
-  const xt=l=>bold?`<b class="xb">+${esc(l)}</b>`:`<span class="w miss xtra">+${esc(l)}</span>`;
+  // (extra words you typed aren't inserted into the answer as "+word": the "Missing or wrong" line names them)
   const word=p=>{
     const bad=(p.req&&!p.ok)||p.bad;
-    const w=bad?(bold?`<b class="xb">${esc(p.w)}</b>`:`<span class="w miss">${esc(p.w)}</span>`):p.ord&&!bold?`<span class="w ord">${esc(p.w)}</span>`:esc(p.w);
-    return (p.px?p.px.map(xt).join(' ')+' ':'')+w+(p.x?' '+p.x.map(xt).join(' '):'');
+    return bad?(bold?`<b class="xb">${esc(p.w)}</b>`:`<span class="w miss">${esc(p.w)}</span>`):p.ord&&!bold?`<span class="w ord">${esc(p.w)}</span>`:esc(p.w);
   };
   return g.res.map(r=>{
     if(r.k) return bold?`<mark class="k${r.ok?' ok':''}">${esc(r.disp)}</mark>`:`<mark class="k ${r.ok?'ok':'miss'}">${esc(r.disp)}</mark>`;
@@ -1897,8 +1896,7 @@ function normFix(f){
 }
 function protHTML(item,res,bold){
   const miss=new Set(res?res.missing:[]);
-  const xs=(res&&res.extra||[]).map(x=>bold?`<b class="xb">+${esc(x)}</b>`:`<span class="w miss xtra">+${esc(x)}</span>`);
-  return item.p.map(s=>miss.has(s)?(bold?`<b class="nw xb">${esc(s)}</b>`:`<span class="nw w miss">${esc(s)}</span>`):`<span class="nw">${esc(s)}</span>`).concat(xs).join(', ');
+  return item.p.map(s=>miss.has(s)?(bold?`<b class="nw xb">${esc(s)}</b>`:`<span class="nw w miss">${esc(s)}</span>`):`<span class="nw">${esc(s)}</span>`).join(', ');
 }
 // Typing from memory: the first answer, a redo after a miss, or a restart after being stopped.
 const fromMemory=()=>run.phase==='answer'||(run.phase==='retype'&&normFix(run.fix).targets[normFix(run.fix).i].kind==='memory');
@@ -1967,9 +1965,8 @@ function liveStop(lc){
 function stopHTML(item,last){
   const m=last.mark; if(!m) return `<p class="fb-ans">${esc(last.stop||'')}</p>`;
   const ref=refOf(item.a,item.phr); const B=new Set(); (m.b||[]).forEach(([a,b])=>{ for(let i=a;i<=b;i++) B.add(i); });
-  const xb=l=>`<b class="xb">+${esc(l)}</b>`;
-  let h=(m.px||[]).map(xb).join(' ')+((m.px||[]).length?' ':'');
-  ref.parts.forEach((w,i)=>{ const t=esc(w); h+=B.has(i)&&w.trim()?`<b class="xb">${t}</b>`:t; if(m.x&&m.x[i]) h+=' '+m.x[i].map(xb).join(' '); });
+  let h='';   // (a stray word shows in bold in "You wrote", not as "+word" in the answer)
+  ref.parts.forEach((w,i)=>{ const t=esc(w); h+=B.has(i)&&w.trim()?`<b class="xb">${t}</b>`:t; });
   const raw=last.text||''; let u='', at=0;
   (m.u||[]).slice().sort((p,q)=>p[0]-q[0]).forEach(([a,b])=>{ if(a<at) return; u+=esc(raw.slice(at,a))+`<b class="xb">${esc(raw.slice(a,b))}</b>`; at=b; });
   u+=esc(raw.slice(at));
