@@ -301,9 +301,9 @@ autosave, two-device sync tests); Mistake warning renamed; skipped words warn, t
 answer with bold; daily streak and date row; clearer back button; runs synced across devices with part-by-part
 merging; next word prefers nearby matches (Ipratropium "acetylcholine" case); number words; one-step fixing; box
 per drug; onto = to; optional joining "and" in mechanisms; warning-counts-as-miss switch (home and card screen);
-Show answer checks typed text; fix parts never doubled; no "+word" markers; small-word typos ("te" for "the", Glucagon case); cut-off
+Show answer checks typed text; fix parts never doubled; small-word typos ("te" for "the", Glucagon case); cut-off
 grading of only the typed part (Magnesium Sulfate case). Handoff script; then "synthesis of prostaglandin" =
-"prostaglandin synthesis" (Acetaminophen case); Skip for now; Drill one card or section from Review.
+"prostaglandin synthesis" (Acetaminophen case); Skip for now; Drill one card or section from Review; no "+word" markers in shown answers.
 
 `nwacc.js` last results: verbatim 100%, swapped words 98.5%, wrong word 86.8%, word from later 83.3%, inserted
 word 93.9%.
