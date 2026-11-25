@@ -23,7 +23,7 @@ try:
     A=device('A'); B=device('B')
     def run_of(pg,deck='moa'): return pg.evaluate(f"(JSON.parse(localStorage.getItem('pdrill:v1')).runs||{{}})['{deck}']||null")
     def answer(pg):
-        d=pg.inner_text('#drug'); a=MOA.get(d.title()) or next(v for k,v in MOA.items() if k.upper()==d.upper())
+        d=pg.inner_text('#drug'); a=MOA.get(d.title()) or next(v for k,v in MOA.items() if k.upper()==d.upper() or k.upper().startswith(d.upper()+' ('))
         pg.fill('#ans',json.loads('"'+a+'"')); pg.keyboard.press('Enter'); pg.wait_for_timeout(200); pg.click('#go'); pg.wait_for_timeout(200)
         return d
     def show(pg): pg.evaluate("document.dispatchEvent(new Event('visibilitychange')); window.dispatchEvent(new Event('focus'))"); pg.wait_for_timeout(500)

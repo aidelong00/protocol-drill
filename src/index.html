@@ -175,7 +175,10 @@ input.shake{animation:shake .32s}
 .tools{display:flex;gap:8px;flex-wrap:wrap}
 .btn.small{font-size:14px;padding:9px 12px;border-width:1.5px}
 .btn:disabled{opacity:.45;cursor:default}
-.actions #nwBtn{flex:1 1 100%}
+.actions2{display:flex;gap:10px;margin-top:-4px}
+.actions2 .btn{flex:1 1 auto}
+.actions2 #skipBtn{flex:0 0 auto;white-space:nowrap}
+.actions2 #nwBtn .cost{display:block;margin:2px 0 0}
 .cost{font-weight:400;font-size:12px;color:var(--muted);margin-left:4px}
 .mn-panel{border:1px solid var(--rule);background:var(--card);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .seg.small button{font-size:13px;padding:7px 11px}
@@ -215,6 +218,8 @@ textarea.warnb{border-color:#E09A2C;box-shadow:0 0 0 3px color-mix(in srgb,#E09A
 
 /* Study + editor */
 .study li{gap:6px}
+.study .q-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.study .q-row .btn.small{flex:none;padding:6px 12px;font-size:13px}
 .study .q{font-family:var(--font-display);font-stretch:106%;font-weight:750;font-size:17px}
 .study .c{font-size:14px;color:var(--muted)}
 .study .a{font-size:16px;white-space:pre-wrap}
@@ -711,6 +716,28 @@ function smallTypo(t,lee,ref){
   for(const w of lee) if(w.length>=2&&w!=='~'&&osa(t,w)===1) return w;
   return null;
 }
+// "synthesis of prostaglandin" says the same as the card's "prostaglandin synthesis", and "acetylcholine action" the
+// same as "action of acetylcholine": your words are put in the card's order, so it's neither a word-order slip nor
+// a stray "of". Only when the card has the one form and not the other; never with and/or, not, no or numbers.
+const OF_ARTS=['the','a','an'];
+function ofSwap(u,ref){
+  const raw=ref.toks.map(x=>x.t);
+  const adj=(A,B)=>raw.some((t,i)=>i+1<raw.length&&tokEq(t,A)&&tokEq(raw[i+1],B));
+  const ofForm=(B,A)=>{ for(let i=0;i+2<raw.length;i++){ if(raw[i+1]!=='of'||!tokEq(raw[i],B)) continue; let k=i+2; if(OF_ARTS.includes(raw[k])) k++; if(k<raw.length&&tokEq(raw[k],A)) return true; } return false; };
+  const word=t=>!!t&&!CRIT(t)&&t!=='of'&&!OF_ARTS.includes(t);
+  const out=u.slice();
+  for(let j=0;j+2<out.length;j++){   // you: "B of A", card: "A B"
+    if(out[j+1]!=='of') continue;
+    let k=j+2; if(OF_ARTS.includes(out[k])) k++;
+    const B=out[j], A=out[k];
+    if(word(A)&&word(B)&&adj(A,B)&&!ofForm(B,A)) out.splice(j,k-j+1,A,B);
+  }
+  for(let j=0;j+1<out.length;j++){   // you: "A B", card: "B of A"
+    const A=out[j], B=out[j+1];
+    if(word(A)&&word(B)&&ofForm(B,A)&&!adj(A,B)){ out.splice(j,2,B,'of',A); j+=2; }
+  }
+  return out;
+}
 function userToks(text,ref,lee,o){
   if(!ref.raw2) ref.raw2=twiceIn(norm(ref.parts.join('')),LEEWAY.keys);
   let u=adapt(canonUser(dedupe(norm(text).map(t=>smallTypo(t,lee,ref)||t),ref.raw2),ref.set),ref);
@@ -726,6 +753,7 @@ function userToks(text,ref,lee,o){
     const hl=ref.set.has(L), hs=ref.set.has(S);
     if(hl&&!hs) u=u.map(t=>t===S?L:t); else if(hs&&!hl) u=u.map(t=>t===L?S:t);
   }
+  u=ofSwap(u,ref);
   if(!ref.tw2) ref.tw2={};
   const tk=lee===LEEWAY.exact?'e':'k'; if(!ref.tw2[tk]) ref.tw2[tk]=twiceIn(ref.toks.map(x=>x.t),lee);
   return dedupe(u.filter(t=>!lee.has(t)),ref.tw2[tk]);
@@ -1402,7 +1430,7 @@ function mergeStores(a,b){   // a: this device, b: the other copy
 }
 // Take in a merged copy. If the run on screen moved on elsewhere, show where it is now.
 function adoptStore(m){
-  const live=run&&ui.screen==='drill'?run.deckId:null, before=live?runT(store.runs[live]):null;
+  const live=run&&!run.one&&ui.screen==='drill'?run.deckId:null, before=live?runT(store.runs[live]):null;
   store=m; snapParts(); persistLocal();
   if(live&&runT(store.runs[live])!==before){
     const r=store.runs[live], deck=curDeck();
@@ -1526,7 +1554,7 @@ function sig(deck){ let h=5381; const s=deck.items.map(i=>i.d+'\u0000'+(i.c||'')
 /* ---------- Runs ---------- */
 const rk=id=>'pdrill:run:'+id;
 function loadRun(deck){ const r=store.runs[deck.id]; if(r&&!r.gone&&r.sig===sig(deck)&&r.cur!=null) return JSON.parse(JSON.stringify(r)); return null; }
-function saveRun(){ if(run){ const c=JSON.parse(JSON.stringify(run)); c.t=Date.now(); store.runs[run.deckId]=c; store.updatedAt=c.t; persistLocal(); scheduleRemote(); } }
+function saveRun(){ if(run&&!run.one){ const c=JSON.parse(JSON.stringify(run)); c.t=Date.now(); store.runs[run.deckId]=c; store.updatedAt=c.t; persistLocal(); scheduleRemote(); } }
 function dropRun(id){ const t=Date.now(); store.runs[id]={gone:t}; store.updatedAt=t; persistLocal(); scheduleRemote(); }
 // Runs used to be kept in separate browser keys: move them into the store once. They have no save time, so
 // between two devices' old runs the one further along wins, and anything saved from now on beats both.
@@ -1772,7 +1800,7 @@ function renderDrill(){
   const deck=curDeck(); dbKey='';
   app.innerHTML=`
   <div class="topbar">
-    <button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button>
+    ${run.one?`<button class="back" data-act="review" data-id="${esc(deck.id)}"><span class="chev" aria-hidden="true">‹</span>Review</button>`:`<button class="back" data-act="${deck.card?'cards':'home'}"><span class="chev" aria-hidden="true">‹</span>${deck.card?'Drug cards':'All decks'}</button>`}
     <div class="tb-right"><span>${esc(deck.short)}</span><button class="tb-btn" id="restartBtn" data-act="restart">Restart</button></div>
   </div>
   <div class="progress">
@@ -1805,7 +1833,10 @@ function renderDrill(){
   <div class="actions">
     <button class="btn primary" id="go" data-act="go">Check</button>
     <button class="btn" id="reveal" data-act="reveal">Show answer</button>
+  </div>
+  <div class="actions2" id="actions2">
     <button class="btn" id="nwBtn" data-act="nextword" hidden>Show next word <span class="cost">counts as a miss</span></button>
+    <button class="btn" id="skipBtn" data-act="skip" hidden>Skip for now</button>
   </div>
   <div class="switches">
     <label class="switch-row"><input type="checkbox" role="switch" id="liveSwitch"> <span>Mistake warning</span></label>
@@ -2065,7 +2096,7 @@ function paint(){
   const drug=document.getElementById('drug');
   if(deck.card){
     // Drug cards: you picked the drug, so the section is the big title and the drug sits small above it.
-    document.getElementById('ask').textContent=`${nm.name}${nm.sub?' ('+nm.sub+')':''} · ${run.cur+1} of ${deck.items.length}`;
+    document.getElementById('ask').textContent=`${nm.name}${nm.sub?' ('+nm.sub+')':''} · ${run.one?'just this section':`${run.cur+1} of ${deck.items.length}`}`;
     drug.textContent=sd.ask;
     drug.className='drug'+(sd.ask.length>22||sd.ask.split(' ').some(w=>w.length>14)?' long':'');
     document.getElementById('sub').textContent=item.d!==title&&!/\(/.test(title)?item.d:'';
@@ -2087,6 +2118,8 @@ function paint(){
   const answering=run.phase==='answer';
   const mnBtn=document.getElementById('mnBtn'); mnBtn.hidden=!item.mn||!answering||p.redo; mnBtn.innerHTML=p.mn?'Hide mnemonic':`Show mnemonic${p.hinted?'':' <span class="cost">counts as a miss</span>'}`;
   const nwBtn=document.getElementById('nwBtn'); nwBtn.hidden=!item.nw||!fromMemory(); nwBtn.disabled=!!p.nw;
+  const skipBtn=document.getElementById('skipBtn'); skipBtn.hidden=!canSkip();
+  document.getElementById('actions2').hidden=nwBtn.hidden&&skipBtn.hidden;
   document.getElementById('tools').hidden=mnBtn.hidden;
   const nwh=document.getElementById('nwHint'); nwh.hidden=!(p.nw&&fromMemory()); if(p.nw) nwh.innerHTML=`Next word: <b>${esc(p.nw)}</b>`;
   paintMnem();
@@ -2246,11 +2279,21 @@ function advance(){
   window.scrollTo({top:0,behavior:'smooth'});
 }
 
+// Skip for now: the card (or drug-card section) goes to the end of the line and comes back after all the others.
+// Skipping isn't a miss; a hint or a warning already shown on it still counts.
+function canSkip(){ return !!run&&run.phase==='answer'&&!pres().redo&&!run.redoNext&&run.queue.length>0; }
+function skipCard(){
+  if(!canSkip()) return;
+  const p=pres(); if(p.assisted||p.hinted||p.nw) countMiss(false);
+  const id=run.cur; run.queue=run.queue.filter(x=>x!==id); run.queue.push(id);
+  advance();
+}
+
 function shake(el){ el=el||ans; if(el===ans&&drugBoxesOn()) el=document.getElementById('drugBoxes'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
 
 function finish(){
   const deck=curDeck();
-  result={deckId:deck.id,total:run.ids.length,firstTry:run.firstTry,misses:run.misses,missed:run.missed.slice(),subset:run.subset};
+  result={deckId:deck.id,total:run.ids.length,firstTry:run.firstTry,misses:run.misses,missed:run.missed.slice(),subset:run.subset,ids:run.ids.slice()};
   if(!run.subset){
     const p=progRec(deck.id);
     p.runs=(p.runs||0)+1; if(result.misses===0) p.perfect=(p.perfect||0)+1;
@@ -2263,7 +2306,8 @@ function finish(){
     } else if(!run.struck) failRun(p);
     result.prog=progOf(deck.id); touch();
   }
-  dropRun(deck.id); run=null;
+  if(run.one) result.one=true; else dropRun(deck.id);
+  run=null;
   ui.screen='results'; ui.deckId=deck.id; render(); window.scrollTo({top:0});
 }
 
@@ -2302,6 +2346,18 @@ function renderAbout(){
 
 function renderResults(){
   const deck=deckById(result.deckId); const r=result;
+  if(r.one){
+    const it=deck.items[r.ids[0]], label=it?itemLabel(deck,it):'';
+    app.innerHTML=`
+  <div class="topbar"><button class="back" data-act="review" data-id="${esc(deck.id)}"><span class="chev" aria-hidden="true">‹</span>Review</button><div class="tb-right">${esc(deck.short)}</div></div>
+  <h1 class="h-res">${r.misses===0?'Right on the first try':'Done'}</h1>
+  <p class="lede">${esc(deck.card?deck.title+' \u00b7 '+label:label)}${r.misses===0?'':`: ${r.misses} miss${r.misses===1?'':'es'} along the way`}. Practice like this doesn\u2019t change the deck\u2019s progress.</p>
+  <div class="actions">
+    <button class="btn primary" data-act="drillone" data-id="${esc(deck.id)}" data-i="${r.ids[0]}">Drill it again</button>
+    <button class="btn" data-act="review" data-id="${esc(deck.id)}">Back to review</button>
+  </div>`;
+    return;
+  }
   const perfect=r.misses===0;
   const pct=Math.round(r.firstTry/r.total*100);
   const missedList=r.missed.map(i=>{ const it=deck.items[i]; return it?`<li><b>${esc(itemLabel(deck,it))}</b>${it.c?`<span>${esc(it.c)}</span>`:''}</li>`:''; }).join('');
@@ -2328,7 +2384,7 @@ function renderStudy(){
   const items=deck.items.map(it=>{
     const g=parseAnswer(it.a).map(s=>s.k?`<mark class="k">${esc(s.disp)}</mark>`:esc(s.s)).join('');
     const mn=it.mn?`<span class="c">Mnemonic: ${esc(mnemonicLetters(it.mn,false))}${store.mnem&&store.mnem[it.d]?' · Mine: '+esc(store.mnem[it.d]):''}</span>`:'';
-    return `<li><span class="q">${esc(itemLabel(deck,it))}</span>${it.c?`<span class="c">${esc(it.c)}</span>`:''}<span class="a">${g}</span>${it.p?`<span class="c">Protocols: ${esc(it.p.join(', '))}</span>`:''}${mn}${it.n?`<span class="c">${esc(it.n)}</span>`:''}</li>`;
+    return `<li><div class="q-row"><span class="q">${esc(itemLabel(deck,it))}</span><button class="btn small" data-act="drillone" data-id="${esc(deck.id)}" data-i="${deck.items.indexOf(it)}" aria-label="Drill just ${esc(itemLabel(deck,it))}">Drill</button></div>${it.c?`<span class="c">${esc(it.c)}</span>`:''}<span class="a">${g}</span>${it.p?`<span class="c">Protocols: ${esc(it.p.join(', '))}</span>`:''}${mn}${it.n?`<span class="c">${esc(it.n)}</span>`:''}</li>`;
   }).join('');
   const r=loadRun(deck);
   app.innerHTML=`
@@ -2374,6 +2430,13 @@ function render(){
   else { ui.screen='home'; renderHome(); }
 }
 
+// Drill one thing (a card, or one section of a drug card) from Review. It's practice: it doesn't count toward the
+// deck's progress, isn't saved, and never touches a run of the whole deck you have going.
+function startOne(id,i){
+  const deck=deckById(id); if(!deck||!deck.items[i]) return;
+  run=newRun(deck,[i]); run.one=true;
+  ui.screen='drill'; ui.deckId=id; render(); window.scrollTo({top:0});
+}
 function startDeck(id,fresh,subset){
   const deck=deckById(id); if(!deck||!deck.items.length) return;
   run=(!fresh&&!subset&&loadRun(deck))||newRun(deck,subset);
@@ -2409,6 +2472,7 @@ app.addEventListener('click',e=>{
       }
       break;
     case 'override': if(run&&run.phase==='retype') override(); break;
+    case 'skip': skipCard(); break;
     case 'nextword': {
       if(!run||!fromMemory()||pres().nw) break;
       const w=nextWord(curItem(),ans.value,store.settings.mode);
@@ -2431,7 +2495,9 @@ app.addEventListener('click',e=>{
       touch(); pres().mnEdit=false; pres().mnView=v?'mine':null; if(v) rememberView(d,'mine'); else if(store.mnemLast&&store.mnemLast[d]==='mine') rememberView(d,null); paintMnem(); break;
     }
     case 'mndelete': { store.mnem=store.mnem||{}; delete store.mnem[curItem().d]; if(store.mnemLast&&store.mnemLast[curItem().d]==='mine') rememberView(curItem().d,null); touch(); pres().mnEdit=false; pres().mnView=null; paintMnem(); break; }
-    case 'restart': if(arm(b,'restart','Tap again to restart')){ const d=run.deckId; dropRun(d); startDeck(d,true); } break;
+    case 'restart': if(arm(b,'restart','Tap again to restart')){ const d=run.deckId; if(run.one) startOne(d,run.ids[0]); else { dropRun(d); startDeck(d,true); } } break;
+    case 'drillone': startOne(id,+b.dataset.i); break;
+    case 'review': ui.screen='study'; ui.deckId=id; render(); window.scrollTo({top:0}); break;
     case 'restartdeck': startDeck(result.deckId,true); break;
     case 'drillmissed': startDeck(result.deckId,true,result.missed); break;
     case 'new': ui.screen='edit'; ui.editId=null; ui.err=''; render(); window.scrollTo({top:0}); break;

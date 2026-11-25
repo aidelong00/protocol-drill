@@ -4,12 +4,12 @@
 cd /home/claude/tests || exit 1
 FILTER='agent-proxy|^- |Allowed|For details'
 echo "== Grading suites (node)"
-for f in v8 dup andor2 cls v7 v6 v5 v4 abbr v3 grade2 andor fix mnorder skip numw andopt smalltypo; do
+for f in v8 dup andor2 cls v7 v6 v5 v4 abbr v3 grade2 andor fix mnorder skip numw andopt smalltypo ofswap; do
   printf "%-10s " "$f"; timeout 600 node $f.test.js 2>&1 | tail -1
 done
 [ "$1" = "node" ] && exit 0
 echo "== App flows (Playwright, Chrome)"
-for f in flow5 flow7 flow8 flow9 flow10 flow11 flow12 flow13 flow16 flow17 flow18 flow19 flow20 flow21 flow22 flow23 flow25 flow26 flow27 flow28 flow29 flow30 art2dev migrate; do
+for f in flow5 flow7 flow8 flow9 flow10 flow11 flow12 flow13 flow16 flow17 flow18 flow19 flow20 flow21 flow22 flow23 flow25 flow26 flow27 flow28 flow29 flow30 flow31 flow32 art2dev migrate; do
   n=$(timeout 300 python3 $f.py 2>&1 | grep -Ev "$FILTER" | grep -c "FAIL\|Traceback")
   printf "%-10s %s\n" "$f" "$([ "$n" = 0 ] && echo ok || echo "$n FAIL (rerun once: some flows pick random cards)")"
 done

@@ -1,6 +1,6 @@
 # Protocol Drill — handoff script for the next session
 
-Follow this to keep building Protocol Drill exactly where the last session left off (handoff: 2026-11-21).
+Follow this to keep building Protocol Drill exactly where the last session left off (handoff: 2026-11-21, updated 2026-11-25).
 Sections 0–3 are the procedure; 4–5 are the reference you'll need while changing things; 6–8 are tests, open threads, history.
 
 ---
@@ -30,7 +30,7 @@ Sections 0–3 are the procedure; 4–5 are the reference you'll need while chan
 
 | Thing | Where |
 |---|---|
-| Claude version (artifact) | slug `b4eff82c-d9f9-4038-a0e1-5061c9accc87`, https://claude.ai/artifact/PLtae1h23avPqFDEyhwaHL, title "Protocol Drill", shared **public** (publishing needs `shared_live:'public'` and `artifact_title:'Protocol Drill'`). Live version at handoff: `1795125432-151f`. |
+| Claude version (artifact) | slug `b4eff82c-d9f9-4038-a0e1-5061c9accc87`, https://claude.ai/artifact/PLtae1h23avPqFDEyhwaHL, title "Protocol Drill", shared **public** (publishing needs `shared_live:'public'` and `artifact_title:'Protocol Drill'`). Live version at last update: `1795628208-9c05`. |
 | Artifact capabilities | `db` rules `[{path:"",read:"admin",write:"admin"},{path:"data/users/{self}",read:"interact",write:"interact"}]`, plus `user`. Each person's progress is the doc `data/users/<id>/state`. **Platform rule:** link viewers are "Viewers" and can never write the db, whatever the rules say (the tool also refuses to loosen rules on a public artifact). That's why the website exists. |
 | Website | https://aidelong00.github.io/protocol-drill/ (GitHub Pages, branch `main`, root). Repo **aidelong00/protocol-drill** (public). The Claude GitHub App is installed on the account, so `add_repo` with `access:"push"` works. |
 | Repo layout | `index.html` (built site), `config.js` (Firebase web config, public by design), `firebase.js` (bundled Firebase SDK: app, auth, firestore/lite), `manifest.webmanifest`, icons, `.nojekyll`, **`src/index.html` (the app source, same file as the artifact)**, `tools/` (build-web.py, fb-entry.js, setup.sh, run-tests.sh, tests/), this file. |
@@ -46,7 +46,7 @@ The Claude version and the website are separate apps with separate progress (Cla
 2. `bash /home/claude/gh-site/tools/setup.sh`. This recreates `/home/claude/protocol-drill/index.html` (source),
    `/home/claude/web/` (build script and site files), `/home/claude/tests/` and `/home/claude/packet/cards.json`
    (test fixture). The tests and build script use these absolute paths.
-3. Check that the source is current: `get_artifact` on the slug. If the live version isn't `1795125432-151f`, or
+3. Check that the source is current: `get_artifact` on the slug. If the live version isn't `1795628208-9c05`, or
    isn't the one noted in the latest commit message, `read_artifact` it and save that HTML as the source
    (`/home/claude/protocol-drill/index.html` and `src/index.html`).
 4. Baseline: `bash /home/claude/gh-site/tools/run-tests.sh` (`node` argument = grading suites only, a few minutes;
@@ -162,6 +162,9 @@ rename anything it searches for, update the script.
   - hr = heart rate = hour where it fits
   - **numbers written out** = digits ("beta two" = beta-2, "three times" = 3 times, "twenty-four" = 24)
   - **ordinals** ("second-degree" = 2nd = 2), but "6-second" stays a length of time
+- **"B of A" = "A B":** "synthesis of prostaglandin" = "prostaglandin synthesis", "action of acetylcholine" =
+  "acetylcholine action" (either way round, "the" allowed in between). Applies only when the card has one form and
+  not the other; never with and/or, not, no or numbers. (`ofSwap` in `userToks`.)
 - Abbreviation or spelled-out term are both fine. If both are given, the spelled-out part must be right
   ("supraventricular bradycardia (SVT)" fails).
 - Opposites are never typos: hyper/hypo, brady/tachy, incr/decr, inter/intra, and so on.
@@ -206,6 +209,15 @@ rename anything it searches for, update the script.
   - Buttons: **Check**, **Show answer** beside it, **Show next word** full width under them (greys out after use;
     using it counts as a miss).
   - Switches under the box: Mistake warning and Warning counts as a miss.
+- **Skip for now** (any deck, next to Show next word): the card or drug-card section goes to the end of the line and
+  comes back after all the others. A skip is not a miss, but a hint or warning already shown on that card still
+  counts. Shown only before you've answered, not during a drug card's "once more from memory" step, and not on the
+  last card left.
+- **Drill one thing:** every card or section on the Review page has a small **Drill** button. It starts a practice
+  run of just that one ("just this section" in the header; back button goes to Review). It doesn't count toward the
+  deck's progress, isn't saved, and never touches a run of the whole deck you have going (`run.one`; `saveRun`
+  skips it, `adoptStore` ignores it). The result screen offers "Drill it again" / "Back to review". Correct answers
+  still count toward the daily streak.
 - **Typing is saved with the run** and comes back when you return, on any device. A revealed next word still fits it.
 - **Show next word:** uses the alignment that stays near your position. Words you typed out of order count as
   done. A wrong word at the end counts as your try at that spot. A half-typed word (no space yet) keeps showing that word.
@@ -249,6 +261,7 @@ rename anything it searches for, update the script.
   - `abbr`: abbreviations. `andor`, `andor2`: and/or rules. `cls`: class phrases. `fix`: fix parts.
   - `mnorder`: mnemonic order. `dup`: doubled words on every card. `skip`: skipped-word warnings vs. flips.
   - `numw`: number words. `andopt`: optional "and" in mechanisms. `smalltypo`: small-word typos.
+  - `ofswap`: "B of A" = "A B" (replays the user's Acetaminophen answer).
   - `grade.test.js` was retired: it predates the verbatim cards.
 - **Next-word accuracy:** `nwacc.js` compares the source with a saved baseline. Before a change that touches next
   word, run `cp /home/claude/protocol-drill/index.html /home/claude/protocol-drill/index.base.html`, then run it
@@ -258,7 +271,7 @@ rename anything it searches for, update the script.
   - 12: class and redo. 13: mnemonic views. 16: next word "ions".
   - 19: drafts. 20/21: retype fixes and protocols. 22: skip warn/stop. 23: streak and back button.
   - 25/26: one-step fix. 27: drug boxes. 28: warning switch. 29: Show answer. 30: cut-off (replays the user's
-    Magnesium Sulfate typing).
+    Magnesium Sulfate typing). 31: Skip for now. 32: drill one thing from Review.
 - **Sync:** `web1` (one device), `web3` (two devices), `art2dev` (Claude version, two devices), `migrate`
   (old run keys). `web2` takes screenshots.
 - `livecal.js` replays the Calcium Chloride skipped-words case.
@@ -286,7 +299,8 @@ answer with bold; daily streak and date row; clearer back button; runs synced ac
 merging; next word prefers nearby matches (Ipratropium "acetylcholine" case); number words; one-step fixing; box
 per drug; onto = to; optional joining "and" in mechanisms; warning-counts-as-miss switch (home and card screen);
 Show answer checks typed text; fix parts never doubled; small-word typos ("te" for "the", Glucagon case); cut-off
-grading of only the typed part (Magnesium Sulfate case).
+grading of only the typed part (Magnesium Sulfate case). Handoff script; then "synthesis of prostaglandin" =
+"prostaglandin synthesis" (Acetaminophen case); Skip for now; Drill one card or section from Review.
 
 `nwacc.js` last results: verbatim 100%, swapped words 98.5%, wrong word 86.8%, word from later 83.3%, inserted
 word 93.9%.
